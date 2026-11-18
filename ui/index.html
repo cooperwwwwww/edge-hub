@@ -1,0 +1,1542 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Edge Hub</title>
+<style>
+:root{
+  --bg:#0b0b0f; --panel:#14141b; --panel2:#1b1b24; --line:#262632; --text:#ecebf2; --muted:#8b8a99;
+  --accent:#ff2a3d; --accent2:#ff5a68; --ok:#2fd27a; --warn:#ffb020; --radius:14px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:14px/1.45 "Segoe UI",system-ui,sans-serif;user-select:none}
+button,select,input{font:inherit;color:inherit}
+.app{display:grid;grid-template-columns:220px 1fr;height:100vh}
+/* sidebar */
+.side{background:#09090d;border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px}
+.logo{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;font-weight:700;font-size:18px;letter-spacing:.5px}
+.logo .mark{width:30px;height:30px;border-radius:9px;background:linear-gradient(135deg,var(--accent),#7a0b16);display:grid;place-items:center;box-shadow:0 0 18px #ff2a3d55}
+.logo small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:1.5px}
+.nav button{display:flex;align-items:center;gap:12px;width:100%;padding:10px 12px;margin:2px 0;border:0;background:none;border-radius:10px;color:var(--muted);cursor:pointer;text-align:left}
+.nav button:hover{background:var(--panel);color:var(--text)}
+.nav button.on{background:linear-gradient(90deg,#ff2a3d22,transparent);color:var(--text);box-shadow:inset 3px 0 0 var(--accent)}
+.nav svg{width:18px;height:18px;flex:none}
+.side .foot{margin-top:auto;padding:10px;color:var(--muted);font-size:12px}
+/* main */
+.main{display:flex;flex-direction:column;min-width:0}
+.top{display:flex;align-items:center;gap:14px;padding:14px 24px;border-bottom:1px solid var(--line);background:#0d0d12}
+.top h1{font-size:18px;margin:0;font-weight:600}
+.spacer{flex:1}
+.chip{display:flex;align-items:center;gap:8px;padding:6px 12px;border-radius:99px;background:var(--panel);border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.dot{width:8px;height:8px;border-radius:50%;background:#555}
+.dot.ok{background:var(--ok);box-shadow:0 0 8px var(--ok)} .dot.bad{background:var(--accent)}
+.content{flex:1;overflow:auto;padding:22px 24px 40px}
+.page{display:none} .page.on{display:block}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:1fr 1fr} .g3{grid-template-columns:repeat(3,1fr)} .g4{grid-template-columns:repeat(4,1fr)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px}
+.card h3{margin:0 0 14px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
+.card h3 .sub{color:var(--muted);font-weight:400;margin-left:auto;font-size:12px}
+.muted{color:var(--muted)} .small{font-size:12px}
+.stat .v{font-size:26px;font-weight:700} .stat .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:1px}
+/* controls */
+.row{display:flex;align-items:center;gap:12px;margin:10px 0}
+.row label{flex:0 0 150px;color:var(--muted)}
+.row label.tog{flex:0 0 40px}
+.outpick{margin-bottom:12px}
+.outbtns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.outbtns button{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:11px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;text-align:left}
+.outbtns button b{display:block;font-size:13px} .outbtns button span{font-size:11px;color:var(--muted)}
+.outbtns button.on{border-color:var(--accent);background:#ff2a3d18;box-shadow:0 0 16px -6px var(--accent)}
+.outbtns svg{flex:none}
+.row .val{width:56px;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:4px;background:var(--line);outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px #ff2a3d33;cursor:pointer}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:6px 10px;outline:none;cursor:pointer}
+select:focus{border-color:var(--accent)}
+.btn{background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:8px 14px;cursor:pointer}
+.btn:hover{border-color:#444}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+.btn.pri:hover{background:var(--accent2)}
+.tog{position:relative;width:40px;height:22px;flex:none;cursor:pointer}
+.tog input{display:none}
+.tog span{position:absolute;inset:0;border-radius:99px;background:var(--line);transition:.15s}
+.tog span:after{content:"";position:absolute;width:16px;height:16px;left:3px;top:3px;border-radius:50%;background:#bbb;transition:.15s}
+.tog input:checked+span{background:var(--accent)}
+.tog input:checked+span:after{left:21px;background:#fff}
+.seg{display:inline-flex;background:var(--panel2);border:1px solid var(--line);border-radius:9px;padding:3px}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:7px;cursor:pointer;color:var(--muted)}
+.seg button.on{background:var(--accent);color:#fff}
+.bigtog{display:flex;align-items:center;gap:10px;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:var(--panel);cursor:pointer;font-weight:600}
+.bigtog.on{background:#ff2a3d22;border-color:var(--accent);color:#fff}
+/* controller (realistic) */
+.pad-wrap{display:flex;justify-content:center;position:relative}
+.pad-wrap:before{content:"";position:absolute;inset:10% 15% 5%;background:radial-gradient(closest-side,#ff2a3d18,transparent);pointer-events:none}
+svg.pad{width:100%;max-width:720px;overflow:visible;position:relative}
+.pad .k{cursor:pointer;transition:transform .045s ease-out,filter .045s;transform-box:fill-box;transform-origin:center}
+.pad .k:hover{filter:brightness(1.35)}
+.pad .k.on:not(.trig):not(.stick){transform:scale(.9) translateY(1px);filter:brightness(1.9) drop-shadow(0 0 7px #ff2a3dcc)}
+.pad .k.sel{filter:drop-shadow(0 0 5px #fff) drop-shadow(0 0 10px var(--accent))}
+.pad .trig{transition:transform .03s linear}
+.pad .stick .capg{transition:transform .02s linear}
+.pad .stick.on .capring{stroke:var(--accent);stroke-opacity:1}
+.pad .stick.on .capg{filter:brightness(1.4)}
+.pad .lbl{fill:#fff;fill-opacity:.38;font-size:10px;font-weight:600;letter-spacing:.8px;pointer-events:none;text-anchor:middle}
+.pad .touchpt{fill:#fff}
+.pad .nopt{pointer-events:none}
+/* curve editor */
+.curvewrap{position:relative}
+.curvewrap canvas{cursor:crosshair;touch-action:none}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chips button{border:1px solid var(--line);background:var(--panel2);border-radius:99px;padding:6px 14px;cursor:pointer;color:var(--muted)}
+.chips button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.help{display:block;color:var(--muted);font-size:12px;margin:-6px 0 10px 162px}
+.qi{display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--line);color:var(--muted);font-size:10px;margin-left:6px;cursor:help}
+details.adv{margin-top:4px}
+details.adv summary{cursor:pointer;color:var(--muted);padding:6px 0;list-style:none;display:flex;align-items:center;gap:8px}
+details.adv summary:before{content:"▸";transition:.15s}
+details.adv[open] summary:before{transform:rotate(90deg)}
+.big .row label{font-weight:600;color:var(--text)}
+.drvlist{margin-top:10px;display:grid;gap:6px}
+.drv{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--panel2);font-size:13px}
+.drv .nm{flex:1} .drv .svc{color:var(--muted);font-family:Consolas,monospace;font-size:12px}
+.chk{display:block;position:relative;padding-left:28px;margin:10px 0;cursor:pointer;line-height:1.45}
+.chk input{position:absolute;left:0;top:2px;margin:0;accent-color:var(--accent);width:16px;height:16px}
+.logline{padding:6px 10px;border-radius:8px;margin:5px 0;font-size:13px;background:var(--panel2)}
+.logline.ok:before{content:"✓  ";color:var(--ok);font-weight:700} .logline.warn:before{content:"!  ";color:var(--warn);font-weight:700} .logline.bad:before{content:"✕  ";color:var(--accent);font-weight:700}
+.releasedbar{display:none;align-items:center;gap:12px;padding:10px 24px;background:#2a8bff18;border-bottom:1px solid #2a8bff40;color:#c6dcff}
+.releasedbar.on{display:flex}
+.curvebar .btn{padding:6px 12px}
+.devlist{display:grid;gap:8px}
+.dev{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);cursor:pointer}
+.dev:hover{border-color:#555} .dev.on{border-color:var(--accent);box-shadow:0 0 14px -6px var(--accent)}
+.dev .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
+.dev .ic.PS4,.dev .ic.PS5{background:#0070d1} .dev .ic.Xbox{background:#107c10} .dev .ic.Auto{background:#3a3a48}
+.dev b{display:block} .dev span{font-size:12px;color:var(--muted)}
+.shakestat{padding:8px 12px;border-radius:9px;font-size:13px;margin-top:8px}
+.shakestat.on{background:#2fd27a18;color:#9ff0c4;border:1px solid #2fd27a44} .shakestat.off{background:var(--panel2);color:var(--muted)}
+.modal{position:fixed;inset:0;background:#000a;display:none;place-items:center;z-index:100}
+.modal.on{display:grid}
+.mbox{width:460px;max-width:92vw;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 20px 60px #000}
+#cmods label{flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;color:var(--text)}
+#cmods label.on{border-color:var(--accent);background:#ff2a3d1c}
+#cmods input{accent-color:var(--accent)}
+.capture{margin-top:10px;padding:14px;border-radius:10px;border:1px dashed #444;text-align:center;color:var(--muted);cursor:pointer;outline:none}
+.capture:focus{border-color:var(--accent);color:var(--text);background:#ff2a3d0d}
+.cprev{display:flex;align-items:center;justify-content:space-between;margin-top:12px;padding:10px 14px;border-radius:10px;background:var(--panel2)}
+.cprev b{font-size:16px}
+/* macro builder */
+.mitem{padding:10px 12px;border-radius:10px;background:var(--panel2);border:1px solid transparent;cursor:pointer;margin-bottom:6px}
+.mitem.on{border-color:var(--accent);background:#ff2a3d14}
+.mitem b{display:block} .mitem span{font-size:12px;color:var(--muted)}
+.tmpl{display:grid;gap:6px}
+.tmpl button{text-align:left;padding:9px 12px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);cursor:pointer}
+.tmpl button:hover{border-color:var(--accent)} .tmpl b{display:block;font-size:13px} .tmpl span{font-size:11px;color:var(--muted)}
+.empty{text-align:center;padding:60px 20px} .empty p{line-height:1.6}
+.mtrig{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 14px;border-radius:12px;background:var(--panel2);margin:10px 0}
+.mtrig > div{display:flex;flex-direction:column;min-width:130px} .mtrig b{font-size:17px}
+.mtog{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);cursor:pointer}
+.mtog input{accent-color:var(--accent);width:15px;height:15px}
+.btn.rec{background:#e81123;border-color:#e81123;color:#fff;animation:recp 1s infinite}
+@keyframes recp{50%{box-shadow:0 0 0 6px #e8112333}}
+.steps{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.step{position:relative;min-width:96px;padding:8px 10px 14px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;overflow:hidden}
+.step:hover{border-color:#555} .step.sel{border-color:var(--accent);box-shadow:0 0 14px -4px var(--accent)}
+.step.play{background:#ff2a3d33;border-color:var(--accent)}
+.step .n{position:absolute;top:4px;right:7px;font-size:10px;color:var(--muted)}
+.step .chips2{display:flex;flex-wrap:wrap;gap:4px;padding-right:12px}
+.step .chips2 i{font-style:normal;font-size:12px;font-weight:600;padding:2px 7px;border-radius:6px;background:#2c2c3a}
+.step .chips2 i.w{background:none;color:var(--muted);font-weight:400}
+.step.wait{background:transparent;border-style:dashed}
+.step .ms{display:block;font-size:11px;color:var(--muted);margin-top:5px}
+.step .dur{position:absolute;left:0;bottom:0;height:3px;background:var(--accent);opacity:.8}
+.step.add{min-width:auto;padding:8px 14px;color:var(--muted);border-style:dashed;background:none}
+.stepedit{margin-top:12px;padding:14px;border-radius:12px;border:1px solid var(--accent);background:#ff2a3d0a}
+.pick{display:flex;flex-wrap:wrap;gap:6px}
+.pick button{padding:6px 11px;border-radius:8px;border:1px solid var(--line);background:var(--panel2);cursor:pointer;font-size:12px}
+.pick button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.pick select{font-size:12px}
+/* native window chrome */
+.titlebar{display:none}
+body.native .titlebar{display:flex;align-items:center;height:34px;background:#07070a;border-bottom:1px solid #1c1c24;user-select:none}
+body.native .app{height:calc(100vh - 34px)}
+.tb-drag{flex:1;height:100%;display:flex;align-items:center;gap:8px;padding-left:12px;font-size:12px;color:var(--muted);letter-spacing:.4px}
+.tb-drag img{width:16px;height:16px}
+.tb-btns{display:flex;height:100%}
+.tb-btns button{width:46px;height:100%;border:0;background:none;color:#aaa;cursor:pointer;display:grid;place-items:center}
+.tb-btns button:hover{background:#1d1d26;color:#fff}
+.tb-btns button.x:hover{background:#e81123;color:#fff}
+.rz{position:fixed;z-index:50;display:none} body.native .rz{display:block}
+.rz[data-rz="1"]{top:0;left:6px;right:6px;height:4px;cursor:n-resize}
+.rz[data-rz="5"]{bottom:0;left:6px;right:6px;height:5px;cursor:s-resize}
+.rz[data-rz="3"]{right:0;top:6px;bottom:6px;width:5px;cursor:e-resize}
+.rz[data-rz="7"]{left:0;top:6px;bottom:6px;width:5px;cursor:w-resize}
+.rz[data-rz="2"]{top:0;right:0;width:8px;height:8px;cursor:ne-resize}
+.rz[data-rz="8"]{top:0;left:0;width:8px;height:8px;cursor:nw-resize}
+.rz[data-rz="4"]{bottom:0;right:0;width:10px;height:10px;cursor:se-resize}
+.rz[data-rz="6"]{bottom:0;left:0;width:10px;height:10px;cursor:sw-resize}
+img.mark{width:32px;height:32px;border-radius:9px;box-shadow:0 0 18px #ff2a3d55}
+.mapitem .tb + .tb{margin-left:-4px}
+.mapitem select{width:118px}
+.gamechip{display:inline-flex;align-items:center;gap:8px;padding:5px 6px 5px 12px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);font-family:Consolas,monospace;font-size:12px}
+.gamechip button{border:0;background:#2a2a36;color:#ccc;width:20px;height:20px;border-radius:50%;cursor:pointer;line-height:1}
+.statgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px}
+.statgrid div{background:var(--panel2);border-radius:9px;padding:8px 10px}
+.statgrid b{display:block;font-size:16px;font-variant-numeric:tabular-nums}
+.statgrid span{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px}
+.curvebar .btn:disabled{opacity:.4;cursor:default}
+input.num{width:72px;background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:5px 8px;outline:none}
+input.num:focus{border-color:var(--accent)}
+/* buttons page */
+.maplist{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mapitem{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;background:var(--panel2);border:1px solid transparent}
+.mapitem.sel{border-color:var(--accent)}
+.mapitem.live{box-shadow:inset 0 0 0 1px var(--accent)}
+.mapitem .nm{flex:1;font-weight:600}
+.mapitem select{width:96px}
+.mapitem .tb{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;background:var(--panel2);color:var(--muted);border:1px solid var(--line)}
+.badge.ok{color:var(--ok);border-color:#2fd27a55} .badge.bad{color:var(--accent);border-color:#ff2a3d55}
+canvas{display:block;width:100%;border-radius:10px;background:#0f0f15}
+.note{padding:12px 14px;border-radius:10px;background:#ff2a3d12;border:1px solid #ff2a3d33;color:#f3c3c8;font-size:13px}
+.note.info{background:#2a8bff12;border-color:#2a8bff33;color:#c6dcff}
+.swatches{display:flex;gap:8px;flex-wrap:wrap}
+.swatches i{width:28px;height:28px;border-radius:8px;cursor:pointer;border:2px solid transparent}
+.swatches i.on{border-color:#fff}
+input[type=color]{width:44px;height:30px;border:0;background:none;padding:0;cursor:pointer}
+input[type=text],textarea{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;outline:none;width:100%}
+textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-select:text}
+.profcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.prof{padding:14px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;position:relative;overflow:hidden}
+.prof:before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--c)}
+.prof.on{border-color:var(--c);box-shadow:0 0 20px -6px var(--c)}
+.prof b{display:block} .prof span{font-size:12px;color:var(--muted)}
+.testgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.tbtn{padding:10px 4px;text-align:center;border-radius:9px;background:var(--panel2);border:1px solid var(--line);font-size:12px;color:var(--muted)}
+.tbtn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.bar{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;position:relative}
+.bar i{position:absolute;left:0;top:0;bottom:0;background:var(--accent)}
+.bar i.raw{background:#55556e}
+.mono{font-family:Consolas,monospace;font-variant-numeric:tabular-nums}
+.macro{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:10px}
+.toast{position:fixed;right:20px;bottom:20px;background:var(--panel2);border:1px solid var(--line);border-left:3px solid var(--accent);padding:10px 16px;border-radius:10px;opacity:0;transition:.2s;pointer-events:none}
+.toast.on{opacity:1}
+@media (max-width:1100px){.g4{grid-template-columns:1fr 1fr}.g3{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+<div class="titlebar" id="titlebar"><div class="tb-drag" id="tbdrag"><img src="data:image/png;base64,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" alt="">Edge Hub</div>
+  <div class="tb-btns"><button data-w="min" title="Minimize"><svg width="10" height="10"><path d="M0 5h10" stroke="currentColor"/></svg></button>
+  <button data-w="max" title="Maximize"><svg width="10" height="10"><rect x=".5" y=".5" width="9" height="9" fill="none" stroke="currentColor"/></svg></button>
+  <button data-w="close" class="x" title="Close"><svg width="10" height="10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor"/></svg></button></div></div>
+<div class="rz" data-rz="1"></div><div class="rz" data-rz="2"></div><div class="rz" data-rz="3"></div><div class="rz" data-rz="4"></div>
+<div class="rz" data-rz="5"></div><div class="rz" data-rz="6"></div><div class="rz" data-rz="7"></div><div class="rz" data-rz="8"></div>
+<div class="app">
+  <aside class="side">
+    <div class="logo"><img class="mark" src="data:image/png;base64,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" alt=""><div>EDGE HUB<small>CONTROL CENTER</small></div></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="foot">PS + ◀ / ▶ switches profile<br><span id="ver">v1.0</span></div>
+  </aside>
+  <main class="main">
+    <div class="top">
+      <h1 id="title">Home</h1>
+      <div class="spacer"></div>
+      <div class="chip"><span class="dot" id="cdot"></span><span id="ctext">No controller</span></div>
+      <div class="chip" title="Reports per second from the controller"><span id="hz">0</span>&nbsp;Hz</div>
+      <div class="chip" title="Battery"><svg width="18" height="10" viewBox="0 0 18 10"><rect x=".5" y=".5" width="15" height="9" rx="2" fill="none" stroke="currentColor"/><rect x="16" y="3" width="2" height="4" rx="1" fill="currentColor"/><rect id="batfill" x="2" y="2" width="0" height="6" rx="1" fill="var(--ok)"/></svg><span id="bat">--</span></div>
+      <select id="profsel" title="Profile"></select>
+      <div class="bigtog" id="maptog" title="Send remapped input to games through a virtual Xbox controller"><span class="dot" id="mapdot"></span><span id="maptext">Remapping off</span></div>
+    </div>
+    <div class="releasedbar" id="releasedbar">Edge Hub has handed your controller back to Windows. It isn't changing any input.<div class="spacer"></div><button class="btn" id="resumebtn">Use Edge Hub again</button><button class="btn" id="quitbtn">Close Edge Hub</button></div>
+    <div class="content" id="content">
+
+<!-- HOME -->
+<section class="page" id="p-home">
+  <div class="grid g4" style="margin-bottom:16px">
+    <div class="card stat"><div class="l">Connection</div><div class="v" id="h-conn">—</div><div class="muted small" id="h-name"></div></div>
+    <div class="card stat"><div class="l">Polling rate</div><div class="v"><span id="h-hz">0</span> <span class="muted" style="font-size:14px">Hz</span></div><div class="muted small" id="h-hzsub">reports / second</div></div>
+    <div class="card stat"><div class="l">Processing delay</div><div class="v"><span id="h-lat">0</span> <span class="muted" style="font-size:14px">ms</span></div><div class="muted small">added by Edge Hub per report</div></div>
+    <div class="card stat"><div class="l">Battery</div><div class="v" id="h-bat">—</div><div class="muted small" id="h-chg"></div></div>
+  </div>
+  <div class="grid" style="grid-template-columns:1.6fr 1fr">
+    <div class="card"><h3>Live controller <span class="sub">click a button to remap it</span></h3><div class="pad-wrap" id="pad-home"></div></div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Profiles</h3><div class="profcards" id="profcards"></div>
+        <div class="row" style="margin-top:14px"><button class="btn" id="newprof">+ New</button><button class="btn" id="dupprof">Duplicate</button><div class="spacer"></div><button class="btn" id="delprof">Delete</button></div>
+        <div class="row"><button class="btn" id="expprof">Share</button><button class="btn" id="impprof">Import</button><span class="muted small">double-click a profile to rename it</span></div></div>
+      <div class="card"><h3>Auto-switch for games <span class="sub">this profile turns on by itself</span></h3>
+        <div id="gamechips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px"></div>
+        <div class="row"><select id="recentapps" style="flex:1"></select><button class="btn" id="addgame">Link</button></div>
+        <div class="row"><input type="text" id="gameexe" placeholder="or type the game's .exe, e.g. cod.exe"><button class="btn" id="addgame2">Add</button></div>
+        <div class="row"><span class="muted small" style="flex:1">When a linked game is in front, Edge Hub switches to this profile, then switches back when you leave it.</span><label class="tog"><input type="checkbox" id="autosw"><span></span></label></div></div>
+      <div class="card" id="drivercard"><h3>Game output</h3><div class="outpick"></div><div id="driverinfo" class="muted small"></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- BUTTONS -->
+<section class="page" id="p-buttons">
+  <div class="grid" style="grid-template-columns:1fr 1.1fr">
+    <div class="card"><h3>Pick a button</h3><div class="pad-wrap" id="pad-btn"></div>
+      <div class="note info" style="margin-top:12px">Your controller's back paddles are set on the controller itself, so to the PC they look exactly like the button they copy. To give a paddle its own job here, set it to copy a button you don't use (like L3 or the touchpad), then remap that button below.</div></div>
+    <div class="card"><h3>Button mapping <span class="sub">your button → what it does</span></h3>
+      <div class="row" style="margin-top:0;flex-wrap:wrap"><div class="seg" id="layertabs"><button data-ly="0" class="on">Normal</button><button data-ly="1">Shift layer</button></div>
+        <div class="spacer"></div><span class="muted small">Shift button</span><select id="shiftbtn"></select></div>
+      <div class="note info" id="layernote" style="display:none;margin-bottom:10px">While you hold the <b id="layerbtn"></b> button, the buttons below do their <b>shift</b> action instead. "Same as normal" keeps a button's usual job. Tip: use a back paddle as the shift button for a second set of buttons.</div>
+      <div class="maplist" id="maplist"></div>
+      <div class="row" style="margin-top:16px"><label>Turbo speed</label><input type="range" min="2" max="30" step="1" data-k="turbo_rate"><span class="val" data-v="turbo_rate"></span></div>
+      <div class="row"><button class="btn" id="resetmap">Reset mapping</button><div class="spacer"></div><button class="btn" id="resetall">Reset whole profile</button></div>
+    </div>
+  </div>
+</section>
+
+<!-- MOUSE & KEYS -->
+<section class="page" id="p-kbm">
+  <div class="grid g2">
+    <div class="card big"><h3>Stick as mouse <span class="sub">move the Windows cursor or aim in mouse-only games</span></h3>
+      <div class="row"><label>Use stick</label><select data-mo="stick"><option value="none">Off</option><option value="right">Right stick</option><option value="left">Left stick</option></select></div>
+      <div class="row"><label>Speed</label><input type="range" min="200" max="4000" step="50" data-mo="speed"><span class="val" data-mov="speed"></span></div>
+      <span class="help">Pixels per second at full push.</span>
+      <div class="row"><label>Acceleration</label><input type="range" min="1" max="3" step="0.05" data-mo="accel"><span class="val" data-mov="accel"></span></div>
+      <span class="help">Higher = slower and more precise for small pushes, still fast at full push.</span>
+    </div>
+    <div class="card big"><h3>Touchpad as trackpad</h3>
+      <div class="row"><label>Enable</label><label class="tog"><input type="checkbox" data-mo="touchpad"><span></span></label></div>
+      <div class="row"><label>Sensitivity</label><input type="range" min="0.2" max="4" step="0.05" data-mo="touch_sens"><span class="val" data-mov="touch_sens"></span></div>
+      <span class="help">Slide a finger to move the cursor. Map "Touchpad" to Left click on the Buttons page to click.</span>
+    </div>
+    <div class="card" style="grid-column:1/-1"><h3>Keyboard & mouse buttons</h3>
+      <div class="muted">On the <a href="#" data-goto="buttons" style="color:var(--accent2)">Buttons</a> page, any button can send a <b>keyboard key</b>, <b>mouse click</b>, <b>scroll</b> or <b>media key</b> instead of an Xbox button. Mix them freely, e.g. Square → R for reload and Touchpad → Left click.
+      <br><br><b>Shortcuts:</b> pick one like <b>Clip last 30 s (Win+Alt+G)</b>, or choose <b>Custom combo…</b> to press any keys together, e.g. Share → Win + Alt + G to save a clip.
+      <br><br>Keyboard and mouse output works whenever <b>Remapping</b> is on, even without the virtual Xbox driver.</div>
+    </div>
+  </div>
+</section>
+
+<!-- STICKS -->
+<section class="page" id="p-sticks">
+  <div class="row" style="margin:0 0 16px"><div class="seg" id="stickside"><button data-s="left" class="on">Left stick</button><button data-s="right">Right stick</button></div>
+    <span class="muted small" style="margin-left:8px">Tip: click a stick on the controller picture to switch</span>
+    <div class="spacer"></div>
+    <button class="btn" id="copystick">Copy to other stick</button></div>
+  <div class="grid" style="grid-template-columns:minmax(360px,1fr) 1.15fr">
+    <div class="grid" style="align-content:start">
+      <div class="card"><div class="pad-wrap" id="pad-stick"></div></div>
+      <div class="card"><h3>What the game sees <span class="sub"><span style="color:#8b8a99">● your thumb</span> &nbsp;<span style="color:var(--accent)">● sent to game</span></span></h3>
+        <canvas id="stickcv" width="600" height="600" style="max-width:340px;margin:0 auto"></canvas>
+        <div class="row small mono"><span>stick <span id="st-raw">0, 0</span></span><div class="spacer"></div><span>game <span id="st-out">0, 0</span></span></div></div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card big"><h3>Dead zones</h3>
+        <div class="row"><label>Dead zone</label><input type="range" min="0" max="0.4" step="0.005" data-s="inner" data-dz><span class="val" data-sv="inner" data-pct></span></div>
+        <span class="help">How far you push before anything happens. Raise it if the stick drifts on its own.</span>
+        <div class="row"><label>Max range</label><input type="range" min="0.5" max="1" step="0.005" data-s="outer"><span class="val" data-sv="outer" data-pct></span></div>
+        <span class="help">Where the stick counts as pushed all the way. Lower it to hit full speed sooner.</span>
+        <div class="row"><label>Anti-dead zone</label><input type="range" min="0" max="0.5" step="0.005" data-s="anti"><span class="val" data-sv="anti" data-pct></span></div>
+        <span class="help">Jumps past the game's own built-in dead zone, so tiny aim moves register right away. For shooters, try 10–25%.</span>
+      </div>
+      <div class="card"><h3>Response curve <span class="sub">click to add points · drag to shape</span></h3>
+        <div class="chips" id="stickcurves"></div>
+        <div class="curvewrap"><canvas id="curvecv" width="700" height="440"></canvas></div>
+        <div class="muted small" id="curvedesc" style="margin-top:8px"></div>
+        <div class="row" style="margin-top:12px"><label>Sensitivity</label><input type="range" min="0.3" max="2.5" step="0.01" data-s="sens"><span class="val" data-sv="sens" data-x></span></div>
+      </div>
+      <div class="card big"><h3>Stick shake <span class="sub">single-player games only</span></h3>
+        <div class="row"><label>Shake amount</label><input type="range" min="0" max="0.1" step="0.002" data-s="shake"><span class="val" data-sv="shake" data-hr></span></div>
+        <div class="row"><label>Shake speed</label><input type="range" min="5" max="60" step="1" data-s="shake_freq"><span class="val" data-sv="shake_freq" data-hz></span></div>
+        <span class="help">Adds a small random shake to this stick. It only runs while one of the games below is the active window, and switches off everywhere else (so it never follows you into online matches).</span>
+        <div id="shakechips" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px"></div>
+        <div class="row"><select id="shakerecent" style="flex:1"></select><button class="btn" id="shakeadd">Add game</button></div>
+        <div class="row"><input type="text" id="shakeexe" placeholder="or type the game's .exe, e.g. eldenring.exe"><button class="btn" id="shakeadd2">Add</button></div>
+        <div class="shakestat off" id="shakestat">Shake is off</div>
+      </div>
+      <div class="card big"><h3>Precision & aim helpers</h3>
+        <div class="row"><label>Hi-res stick</label><input type="range" min="0" max="1" step="0.05" data-s="hires"><span class="val" data-sv="hires" data-hr></span></div>
+        <span class="help">Your stick reports 256 steps. Hi-res finds the positions <b>between</b> those steps by averaging the stick's tiny flicker, for smoother, finer slow aim. Fast moves still pass through instantly.</span>
+        <div class="row"><label>Anti-snapback</label><label class="tog"><input type="checkbox" data-s="snapback"><span></span></label></div>
+        <span class="help">When you let go of the stick quickly, its spring can whip past center and nudge your aim the wrong way. This cancels that overshoot.</span>
+        <div class="row"><label>Aim (L2) sensitivity</label><input type="range" min="0.2" max="1.5" step="0.01" data-s="ads_sens"><span class="val" data-sv="ads_sens" data-x></span></div>
+        <span class="help">Slows (or speeds up) this stick while you hold L2 to aim down sights.</span>
+      </div>
+      <div class="card"><h3>Drift fix <span class="sub" id="centerinfo"></span></h3>
+        <div class="muted small">Let go of both sticks, then press Calibrate. Edge Hub saves where your sticks rest and treats that as the new center.</div>
+        <div class="row"><button class="btn pri" id="calsticks">Calibrate center</button><button class="btn" id="clrsticks">Clear</button></div>
+      </div>
+      <div class="card"><details class="adv"><summary><b style="color:var(--text)">Advanced</b> <span class="small">dead zone shape, per-axis settings, resolution, snapping…</span></summary>
+        <div class="row"><label>Dead zone shape<span class="qi" title="Radial: one circle, best for most games. Axial: separate X and Y zones, good for menus and driving. Hybrid: circle plus a little axis lock.">?</span></label><div class="seg" data-seg="shape"><button data-o="radial">Radial</button><button data-o="axial">Axial</button><button data-o="hybrid">Hybrid</button></div></div>
+        <div class="row" data-show="axial hybrid"><label>X dead zone</label><input type="range" min="0" max="0.4" step="0.005" data-s="inner_x"><span class="val" data-sv="inner_x" data-pct></span></div>
+        <div class="row" data-show="axial hybrid"><label>Y dead zone</label><input type="range" min="0" max="0.4" step="0.005" data-s="inner_y"><span class="val" data-sv="inner_y" data-pct></span></div>
+        <div class="row"><label>Anti-dead zone X<span class="qi" title="Extra anti-dead zone on just the left/right axis, for games with a square dead zone.">?</span></label><input type="range" min="0" max="0.5" step="0.005" data-s="anti_x"><span class="val" data-sv="anti_x" data-pct></span></div>
+        <div class="row"><label>Anti-dead zone Y</label><input type="range" min="0" max="0.5" step="0.005" data-s="anti_y"><span class="val" data-sv="anti_y" data-pct></span></div>
+        <div class="row"><label>X sensitivity</label><input type="range" min="0.3" max="2.5" step="0.01" data-s="sens_x"><span class="val" data-sv="sens_x" data-x></span></div>
+        <div class="row"><label>Y sensitivity</label><input type="range" min="0.3" max="2.5" step="0.01" data-s="sens_y"><span class="val" data-sv="sens_y" data-x></span></div>
+        <div class="row"><label>Stick resolution<span class="qi" title="Native passes every one of the stick's 256 steps straight through. Lower numbers snap the output to fewer, bigger steps.">?</span></label><input type="range" min="0" max="128" step="1" data-s="resolution"><span class="val" data-sv="resolution" data-res></span></div>
+        <div class="row"><label>Anti-jitter<span class="qi" title="Right of center: ignores tiny shakes below this size. Left of center (negative): boosts tiny, quick movements so micro-aim registers harder. Neither side adds any delay.">?</span></label><input type="range" min="-0.05" max="0.05" step="0.001" data-s="jitter"><span class="val" data-sv="jitter" data-jit style="width:96px"></span></div>
+        <span class="help">← negative boosts tiny movements · 0 off · positive ignores tiny shakes →</span>
+        <div class="row"><label>Angle snapping<span class="qi" title="Pulls the stick onto straight up/down/left/right when you're within this many degrees.">?</span></label><input type="range" min="0" max="30" step="1" data-s="snap"><span class="val" data-sv="snap" data-deg></span></div>
+        <div class="row"><label>Rotation</label><input type="range" min="-45" max="45" step="1" data-s="rotation"><span class="val" data-sv="rotation" data-deg></span></div>
+        <div class="row"><label>Square output<span class="qi" title="Lets diagonals reach full speed on both axes.">?</span></label><label class="tog"><input type="checkbox" data-s="square"><span></span></label></div>
+        <div class="row"><label>Invert X</label><label class="tog"><input type="checkbox" data-s="invx"><span></span></label><label style="flex:0 0 auto;margin-left:20px">Invert Y</label><label class="tog"><input type="checkbox" data-s="invy"><span></span></label></div>
+        <div class="row"><label>Swap sticks</label><label class="tog"><input type="checkbox" data-k="swap_sticks"><span></span></label></div>
+      </details></div>
+    </div>
+  </div>
+</section>
+
+<!-- TRIGGERS -->
+<section class="page" id="p-triggers">
+  <div class="grid g2" id="trigcards"></div>
+</section>
+
+<!-- MOTION -->
+<section class="page" id="p-motion">
+  <div class="grid g2">
+    <div class="card"><h3>Gyro aiming <span class="sub">moves the right stick</span></h3>
+      <div class="row"><label>Enable</label><label class="tog"><input type="checkbox" data-g="enabled"><span></span></label></div>
+      <div class="row"><label>Active when</label><select data-g="mode"><option value="hold_l2">Holding L2 (aim)</option><option value="hold_l1">Holding L1</option><option value="touch">Touching touchpad</option><option value="always">Always</option></select></div>
+      <div class="row"><label>Sensitivity</label><input type="range" min="0.1" max="5" step="0.05" data-g="sens"><span class="val" data-gv="sens" data-x></span></div>
+      <div class="row"><label>Invert X</label><label class="tog"><input type="checkbox" data-g="invx"><span></span></label><label style="flex:0 0 auto;margin-left:20px">Invert Y</label><label class="tog"><input type="checkbox" data-g="invy"><span></span></label></div>
+      <div class="row"><button class="btn" id="calgyro">Calibrate gyro</button><span class="muted small" id="gyrocal">Put the controller flat and still first</span></div>
+    </div>
+    <div class="card"><h3>Motion sensors <span class="sub">live</span></h3><canvas id="gyrocv" width="700" height="300"></canvas>
+      <div class="row small mono"><span>gyro <span id="gyrotxt"></span></span><div class="spacer"></div><span>accel <span id="acctxt"></span></span></div></div>
+  </div>
+</section>
+
+<!-- VIBRATION & LIGHT -->
+<section class="page" id="p-light">
+  <div class="grid g2">
+    <div class="card"><h3>Vibration</h3>
+      <div class="row"><label>Strength</label><input type="range" min="0" max="1" step="0.01" data-r="intensity"><span class="val" data-rv="intensity" data-pct></span></div>
+      <div class="row"><label>Swap motors</label><label class="tog"><input type="checkbox" data-r="swap"><span></span></label></div>
+      <div class="row"><button class="btn" data-rum="big">Test heavy</button><button class="btn" data-rum="small">Test light</button><button class="btn pri" data-rum="both">Test both</button></div>
+      <div class="muted small">Game vibration reaches the controller while Remapping is on.</div>
+    </div>
+    <div class="card"><h3>Light bar</h3>
+      <div class="row"><label>Effect</label><div class="chips" id="lightmodes" style="margin:0"></div></div>
+      <div class="row"><label>Effect speed</label><input type="range" min="0.2" max="4" step="0.1" data-l="speed"><span class="val" data-lv="speed" data-x></span></div>
+      <div class="row"><label>Color</label><input type="color" id="lightcol"><div class="swatches" id="swatches"></div></div>
+      <div class="row"><label>Low battery warning</label><label class="tog"><input type="checkbox" id="lowbat"><span></span></label><span class="muted small">light bar blinks red under 15%</span></div>
+      <div class="row"><label>Brightness</label><input type="range" min="0" max="1" step="0.01" data-l="brightness"><span class="val" data-lv="brightness" data-pct></span></div>
+      <div class="row"><label>Show battery level</label><label class="tog"><input type="checkbox" data-l="battery"><span></span></label><span class="muted small">red = low, green = full</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- MACROS -->
+<section class="page" id="p-macros">
+  <div class="grid" style="grid-template-columns:290px 1fr">
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Your macros</h3><div id="mlist"></div><button class="btn pri" id="addmacro" style="width:100%;margin-top:6px">+ New macro</button></div>
+      <div class="card"><h3>Templates</h3><div id="mtemplates" class="tmpl"></div></div>
+    </div>
+    <div class="card" id="meditor"></div>
+  </div>
+</section>
+
+<!-- TESTER -->
+<section class="page" id="p-tester">
+  <div class="grid g2">
+    <div class="card"><h3>Buttons</h3><div class="testgrid" id="testgrid"></div>
+      <h3 style="margin-top:18px">Triggers</h3>
+      <div class="row"><label>L2</label><div class="bar" style="flex:1"><i id="tl2"></i></div><span class="val mono" id="tl2v">0</span></div>
+      <div class="row"><label>R2</label><div class="bar" style="flex:1"><i id="tr2"></i></div><span class="val mono" id="tr2v">0</span></div>
+      <h3 style="margin-top:18px">Touchpad</h3><canvas id="touchcv" width="760" height="300"></canvas></div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Sticks <span class="sub">raw, no deadzone</span></h3>
+        <div class="grid g2"><canvas id="tlcv" width="400" height="400"></canvas><canvas id="trcv" width="400" height="400"></canvas></div>
+        <div class="row small mono"><span id="tlv"></span><div class="spacer"></div><span id="trv"></span></div>
+        <div class="muted small" id="driftmsg"></div></div>
+      <div class="card"><h3>Polling & performance <span class="sub">time between controller reports</span></h3>
+        <canvas id="pollcv" width="700" height="200"></canvas>
+        <div class="statgrid"><div><span>Rate</span><b id="pl-hz">0 Hz</b></div><div><span>Average</span><b id="pl-avg">-</b></div><div><span>Fastest / slowest</span><b id="pl-mm">-</b></div><div><span>Jitter</span><b id="pl-jit">-</b></div></div>
+        <div class="row"><label>Polling rate</label><span class="mono" id="pf-hz"></span></div>
+        <div class="row"><label>Processing (avg)</label><span class="mono" id="pf-avg"></span></div>
+        <div class="row"><label>Processing (peak)</label><span class="mono" id="pf-max"></span></div>
+        <div class="row"><label>Report interval</label><span class="mono" id="pf-int"></span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SETTINGS -->
+<section class="page" id="p-settings">
+  <div class="grid g2">
+    <div class="card"><h3>Polling rate</h3>
+      <div class="row"><label>Measured now</label><span class="mono" id="set-hz"></span></div>
+      <div class="row"><label>Bluetooth poll rate</label><select id="btpoll"><option value="0">Fastest (up to ~1000 Hz)</option><option value="1">1 ms (1000 Hz)</option><option value="2">2 ms (500 Hz)</option><option value="4">4 ms (250 Hz)</option><option value="8">8 ms (125 Hz)</option></select></div>
+      <div class="note info">Over <b>Bluetooth</b>, Edge Hub asks the controller to report as fast as you pick here.<br><br>Over <b>USB</b>, the controller itself sends 250 reports a second, and no app can change that. To reach 1000 Hz on USB you need a USB overclock driver such as <b>hidusbf</b>. Set the controller's device to 1000 Hz in it, then check the measured number above. Not every third-party controller handles it; if yours acts up, set it back to 250.</div>
+    </div>
+    <div class="card"><h3>Game output (virtual Xbox controller)</h3>
+      <div class="outpick"></div><div id="driverinfo2"></div>
+      <div class="row"><label>Turn on at launch</label><label class="tog"><input type="checkbox" id="autostart"><span></span></label></div>
+      <div class="note" style="margin-top:10px">While remapping is on, games can see <b>two</b> controllers: your real one and the virtual one. If you get double inputs, turn off Steam Input for the game, or use <b>HidHide</b> to hide the real controller from games.</div>
+    </div>
+    <div class="card" style="grid-column:1 / -1"><h3>Controller <span class="sub">PS4 · PS5 / DualSense Edge · Xbox and other XInput pads</span></h3>
+      <div id="devlist" class="devlist"></div>
+      <div class="muted small" style="margin-top:8px">Edge Hub uses the first controller it finds unless you pick one here. Turn a controller on and it appears within a few seconds.</div></div>
+    <div class="card"><h3>Profiles folder</h3><div class="muted small" id="datadir"></div><div class="row"><button class="btn" id="opendata">Open folder</button></div></div>
+    <div class="card"><h3>Shortcuts</h3><div class="muted">PS + D-pad ◀ / ▶ : previous / next profile (the light bar flashes)<br>PS on its own : Xbox Guide button</div>
+      <div class="row"><label>Vibrate on profile switch</label><label class="tog"><input type="checkbox" id="profrumble"><span></span></label></div></div>
+    <div class="card" id="restorecard" style="grid-column:1 / -1"><h3>Restore original setup <span class="sub">stop using Edge Hub and go back to the regular drivers</span></h3>
+      <div class="grid g2">
+        <div>
+          <div class="row" style="margin-top:0"><b>Your controller's drivers right now</b><div class="spacer"></div><button class="btn" id="chkdrv">Check again</button></div>
+          <div id="drvsummary" class="muted small">Checking…</div>
+          <div id="drvlist" class="drvlist"></div>
+          <div class="muted small" style="margin-top:10px">Edge Hub doesn't replace your controller's driver. It reads the controller through the standard Windows driver. Only the optional extras listed here change your system.</div>
+        </div>
+        <div>
+          <b>What to undo</b>
+          <label class="chk"><input type="checkbox" checked disabled> Turn off remapping and release the controller (rumble off, light bar back to blue, normal Bluetooth rate, no auto-start)</label>
+          <label class="chk"><input type="checkbox" id="r-driver"> Reinstall the controller's standard Windows driver <span class="muted">(clears USB overclocks/filters; plug in by USB first)</span></label>
+          <label class="chk" id="r-vigem-row"><input type="checkbox" id="r-vigem"> Uninstall ViGEmBus, the virtual controller driver</label>
+          <label class="chk" id="r-hidhide-row"><input type="checkbox" id="r-hidhide"> Uninstall HidHide</label>
+          <label class="chk"><input type="checkbox" id="r-settings"> Delete Edge Hub profiles and settings</label>
+          <div id="hidusbfnote" class="note" style="display:none;margin:8px 0">A USB overclock tool (<b>hidusbf</b>) is installed. "Reinstall the standard driver" takes it off your controller. To remove the tool itself, open its setup and click <b>Uninstall</b>.</div>
+          <div class="row"><button class="btn pri" id="dorestore">Restore original setup</button><span class="muted small">Windows may ask for permission for driver steps.</span></div>
+          <div id="restorelog"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+    </div>
+  </main>
+</div>
+<div class="toast" id="toast"></div>
+<div class="modal" id="combomodal"><div class="mbox">
+  <h3 style="margin:0 0 6px">Custom key combo</h3>
+  <div class="muted small">Tick the keys to hold, then pick the main key. Or click the box below and press the combo on your keyboard.</div>
+  <div class="row" id="cmods"></div>
+  <div class="row"><label style="flex:0 0 80px">Main key</label><select id="ckey" style="flex:1"></select></div>
+  <div class="capture" id="ccap" tabindex="0">Click here, then press the keys on your keyboard</div>
+  <div class="cprev"><span class="muted small">Your button will press</span><b id="cprev">-</b></div>
+  <div class="muted small" id="cwin" style="display:none;margin-top:6px">Windows-key combos can't be typed here (Windows grabs them first), so tick <b>Win</b> above instead.</div>
+  <div class="row" style="margin-top:14px"><div class="spacer"></div><button class="btn" id="ccancel">Cancel</button><button class="btn pri" id="csave">Use this combo</button></div>
+</div></div>
+
+<script>
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const NAMES = {cross:'Cross ✕',circle:'Circle ○',square:'Square □',triangle:'Triangle △',l1:'L1',r1:'R1',l2:'L2',r2:'R2',l3:'L3',r3:'R3',share:'Share',options:'Options',ps:'PS',touch:'Touchpad',up:'D-pad ▲',down:'D-pad ▼',left:'D-pad ◀',right:'D-pad ▶'};
+const PAGES = [
+  ['home','Home','M3 11l9-8 9 8v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z'],
+  ['buttons','Buttons','M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 5a5 5 0 1 1 0 10 5 5 0 0 1 0-10z'],
+  ['kbm','Mouse & Keys','M12 2a6 6 0 0 1 6 6v8a6 6 0 0 1-12 0V8a6 6 0 0 1 6-6zm-1 3v5h2V5z'],
+  ['sticks','Sticks','M12 3a4 4 0 0 1 4 4 4 4 0 0 1-3 3.9V17h3v4H8v-4h3v-6.1A4 4 0 0 1 8 7a4 4 0 0 1 4-4z'],
+  ['triggers','Triggers','M6 3h8a6 6 0 0 1 6 6v12h-4V9a2 2 0 0 0-2-2H6z'],
+  ['motion','Motion','M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z'],
+  ['light','Vibration & Light','M12 2a7 7 0 0 1 4 12.7V18H8v-3.3A7 7 0 0 1 12 2zM9 20h6v2H9z'],
+  ['macros','Macros','M4 4h16v4H4zm0 6h10v4H4zm0 6h16v4H4z'],
+  ['tester','Tester','M9 2h6v2h-1v5l5 9a2 2 0 0 1-1.8 3H6.8A2 2 0 0 1 5 18l5-9V4H9z'],
+  ['settings','Settings','M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2.1.9-.3 1.2 1.2 2-1.9 1.9-2-1.2-1.2.3L13.8 21h-2.6l-.9-2.1-1.2-.3-2 1.2-1.9-1.9 1.2-2-.3-1.2L3 13.3v-2.6l2.1-.9.3-1.2-1.2-2 1.9-1.9 2 1.2 1.2-.3L10.2 3h2.6l.9 2.1 1.2.3 2-1.2 1.9 1.9-1.2 2 .3 1.2 2.1.9z'],
+];
+
+let api = null, INIT = null, P = null, S = {connected:false}, side = 'left', selSrc = 'cross';
+
+/* ---------------- mock api for browser preview ---------------- */
+function mockApi(){
+  const prof = () => ({name:'Default',color:'#ff2a3d',map:{cross:'A',circle:'B',square:'X',triangle:'Y',l1:'LB',r1:'RB',l2:'LT',r2:'RT',l3:'LS',r3:'RS',share:'BACK',options:'START',ps:'GUIDE',touch:'BACK',up:'UP',down:'DOWN',left:'LEFT',right:'RIGHT'},turbo:{},turbo_rate:12,
+    sticks:{left:st(),right:st()},swap_sticks:false,toggle:{},games:['cod.exe'],mouse:{stick:'none',speed:1400,accel:1.6,touchpad:false,touch_sens:1},triggers:{left:tr(),right:tr()},rumble:{intensity:1,swap:false},gyro:{enabled:false,mode:'hold_l2',sens:1,invx:false,invy:false},macros:[],light:{battery:false,brightness:1,mode:'static',speed:1}});
+  const st = () => ({shape:'radial',inner:.06,inner_x:.06,inner_y:.06,outer:.98,curve:'linear',points:[[.25,.25],[.5,.5],[.75,.75]],y0:0,y1:1,smooth:false,sens:1,sens_x:1,sens_y:1,anti:0,anti_x:0,anti_y:0,invx:false,invy:false,rotation:0,snap:0,square:false,resolution:0,jitter:0,hires:0,snapback:false,ads_sens:1,shake:0,shake_freq:30});
+  const tr = () => ({start:.02,end:1,anti:0,digital:false,curve:'linear',points:[[.25,.25],[.5,.5],[.75,.75]],y0:0,y1:1,smooth:false});
+  let p = prof(); const t0 = performance.now();
+  return {
+    get_init: async () => ({profiles:['Default','FPS','Racing','Custom'],current:p.name,profile:p,driver:'missing_package',sources:Object.keys(NAMES),targets:['A','B','X','Y','LB','RB','LT','RT','LS','RS','BACK','START','GUIDE','UP','DOWN','LEFT','RIGHT','NONE'],settings:{},data_dir:'%APPDATA%\\EdgeHub'}),
+    get_state: async () => { const t=(performance.now()-t0)/1000, b={}; Object.keys(NAMES).forEach(k=>b[k]=false); b.cross = Math.sin(t*3)>.6; b.r1 = Math.cos(t*2)>.8;
+      const lx=128+100*Math.cos(t), ly=128+100*Math.sin(t*1.3);
+      return {connected:true,conn:'USB',name:'Wireless Controller',rate:250,proc_us:34,proc_us_max:90,battery:70,charging:true,lx,ly,rx:131,ry:126,l2v:(Math.sin(t)+1)*127,r2v:0,btn:b,gyro:[Math.sin(t)*300,Math.cos(t)*200,10],accel:[0,8000,0],touches:[[900+600*Math.sin(t),400]],mapping:false,current:p.name,poll:{min:3800,max:4300,avg:4000,jitter:60,recent:Array.from({length:160},(_, i)=>4000+Math.sin(t*5+i)*150+(i%37===0?900:0))},out:{lx:(lx-128)/128,ly:-(ly-128)/128,rx:0,ry:0},centers:{left:[0,0],right:[0,0]}}; },
+    save_profile: async (x) => { p = x; return {profiles:['Default','FPS','Racing','Custom'],current:p.name,profile:p}; },
+    select_profile: async () => mockApi().get_init(), new_profile: async()=>({}), delete_profile: async()=>({}), reset_profile: async () => ({profile:prof()}),
+    set_mapping: async () => ({mapping:false,error:'missing_package'}), set_setting: async()=>{}, test_rumble: async()=>{}, calibrate_gyro: async()=>{}, calibrate_sticks: async()=>{}, clear_stick_center: async()=>{},
+    driver_status: async()=>'missing_package', install_driver: async()=>true, open_data_dir: async()=>{},
+    system_status: async()=>({all_standard:true,vigem:true,hidhide:false,hidusbf:false,devices:[
+      {name:'USB Composite Device',id:'USB\\VID_054C&PID_09CC\\1',service:'usbccgp',provider:'Microsoft',filters:[],standard:true},
+      {name:'USB Input Device',id:'USB\\VID_054C&PID_09CC&MI_03\\1',service:'HidUsb',provider:'Microsoft',filters:[],standard:true},
+      {name:'Wireless Controller',id:'USB\\VID_054C&PID_09CC&MI_00\\1',service:'usbaudio',provider:'Microsoft',filters:[],standard:true}]}),
+    restore: async()=>({log:[['ok','Remapping turned off and the virtual controller removed'],['ok','Controller released']],status:{all_standard:true,devices:[]}}),
+    release: async()=>{}, resume: async()=>{}, quit: async()=>{},
+    list_devices: async()=>[{id:'p1',name:'Wireless Controller',kind:'PS4',conn:'USB',active:true},{id:'xinput:0',name:'Xbox controller (player 1)',kind:'Xbox',conn:'XInput',active:false}],
+    import_profile: async(x)=>({profiles:['Default'],current:'Default',profile:x}), recent_apps: async()=>['cod.exe','fortnite.exe','chrome.exe'],
+  };
+}
+
+/* ---------------- controller svg ---------------- */
+/* Realistic black & red controller, drawn in SVG so every part can animate. */
+const PAD_HOSTS = [['#pad-home','ph'],['#pad-btn','pb'],['#pad-stick','pst']];
+function padSVG(id){
+  const u = n => `url(#${id}-${n})`;
+  const body = 'M215 112 C262 98 300 96 330 98 L470 98 C500 96 538 98 585 112 C650 118 690 150 712 210 C735 280 760 370 762 420 C764 470 735 500 700 494 C670 490 650 470 630 440 L588 392 C570 378 545 372 520 372 L280 372 C255 372 230 378 212 392 L170 440 C150 470 130 490 100 494 C65 500 36 470 38 420 C40 370 65 280 88 210 C110 150 150 118 215 112 Z';
+  const face = (src, x, y, sym, col) => `<g class="k" data-src="${src}">
+      <circle cx="${x}" cy="${y+3}" r="24" fill="#000" opacity=".55"/>
+      <circle cx="${x}" cy="${y}" r="23" fill="${u('btn')}" stroke="#000" stroke-opacity=".6" stroke-width="1.5"/>
+      <ellipse cx="${x-5}" cy="${y-9}" rx="11" ry="6" fill="#fff" opacity=".07"/>
+      <g fill="none" stroke="${col}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".95">${sym(x, y)}</g></g>`;
+  const arm = (src, d, tri) => `<g class="k" data-src="${src}"><path d="${d}" fill="${u('btn')}" stroke="#000" stroke-opacity=".7" stroke-width="1.5"/><path d="${tri}" fill="#6a6a74"/></g>`;
+  const stick = (src, cx, cy, side) => `<g class="k stick" data-src="${src}">
+      <circle cx="${cx}" cy="${cy}" r="54" fill="${u('well')}" stroke="#2c2c33" stroke-width="2"/>
+      <circle cx="${cx}" cy="${cy}" r="44" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="4"/>
+      <g class="capg" id="${id}-${side}" style="transform-origin:${cx}px ${cy}px">
+        <circle cx="${cx}" cy="${cy+5}" r="39" fill="#000" opacity=".6"/>
+        <circle cx="${cx}" cy="${cy}" r="39" fill="${u('cap')}"/>
+        <circle cx="${cx}" cy="${cy}" r="36.5" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="3.5" stroke-dasharray="1.6 2.6"/>
+        <circle cx="${cx}" cy="${cy}" r="29" fill="${u('capin')}"/>
+        <circle class="capring" cx="${cx}" cy="${cy}" r="29" fill="none" stroke="#fff" stroke-opacity=".06" stroke-width="2"/>
+        <ellipse cx="${cx-8}" cy="${cy-14}" rx="16" ry="7" fill="#fff" opacity=".06"/>
+      </g></g>`;
+  return `<svg class="pad" id="${id}" viewBox="0 20 800 500">
+  <defs>
+    <linearGradient id="${id}-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e2e35"/><stop offset=".4" stop-color="#18181c"/><stop offset="1" stop-color="#09090b"/></linearGradient>
+    <radialGradient id="${id}-sheen" cx=".5" cy=".12" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".13"/><stop offset=".6" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${id}-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4256"/><stop offset=".55" stop-color="#d0122a"/><stop offset="1" stop-color="#7a0612"/></linearGradient>
+    <linearGradient id="${id}-redside" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b30d20"/><stop offset="1" stop-color="#ff3348"/></linearGradient>
+    <radialGradient id="${id}-well" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#040405"/><stop offset=".82" stop-color="#0c0c0f"/><stop offset="1" stop-color="#2a2a31"/></radialGradient>
+    <radialGradient id="${id}-btn" cx=".38" cy=".28" r=".85"><stop offset="0" stop-color="#3e3e47"/><stop offset=".55" stop-color="#1c1c21"/><stop offset="1" stop-color="#0b0b0e"/></radialGradient>
+    <radialGradient id="${id}-cap" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#4c4c55"/><stop offset=".5" stop-color="#202026"/><stop offset="1" stop-color="#0a0a0d"/></radialGradient>
+    <radialGradient id="${id}-capin" cx=".5" cy=".68" r=".65"><stop offset="0" stop-color="#34343c"/><stop offset="1" stop-color="#101014"/></radialGradient>
+    <linearGradient id="${id}-tp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26262c"/><stop offset="1" stop-color="#121216"/></linearGradient>
+    <linearGradient id="${id}-bump" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a42"/><stop offset="1" stop-color="#141418"/></linearGradient>
+    <pattern id="${id}-grain" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".6" fill="#fff" opacity=".035"/><circle cx="3.5" cy="3.2" r=".5" fill="#000" opacity=".2"/></pattern>
+    <filter id="${id}-sh" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".75"/></filter>
+    <filter id="${id}-glow" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="6"/></filter>
+    <clipPath id="${id}-tpclip"><path d="M304 102 L496 102 L492 192 Q490 208 474 208 L326 208 Q310 208 308 192 Z"/></clipPath>
+  </defs>
+
+  <!-- triggers (behind body) -->
+  <g class="k trig" data-src="l2" id="${id}-l2"><path d="M172 124 C170 80 205 52 252 50 C284 49 300 70 300 100 L298 122 Z" fill="${u('red')}" stroke="#4a020a" stroke-width="1.5"/>
+    <path d="M190 104 C196 78 222 64 252 63" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
+    <path class="nopt" id="${id}-l2p" d="M172 124 C170 80 205 52 252 50 C284 49 300 70 300 100 L298 122 Z" fill="#fff" opacity="0"/>
+    <text class="lbl" x="245" y="92">L2</text></g>
+  <g class="k trig" data-src="r2" id="${id}-r2"><path d="M628 124 C630 80 595 52 548 50 C516 49 500 70 500 100 L502 122 Z" fill="${u('red')}" stroke="#4a020a" stroke-width="1.5"/>
+    <path d="M610 104 C604 78 578 64 548 63" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
+    <path class="nopt" id="${id}-r2p" d="M628 124 C630 80 595 52 548 50 C516 49 500 70 500 100 L502 122 Z" fill="#fff" opacity="0"/>
+    <text class="lbl" x="555" y="92">R2</text></g>
+  <!-- bumpers -->
+  <g transform="translate(0,-17)"><g class="k" data-src="l1"><path d="M150 150 C168 118 222 100 300 101 L301 122 C240 120 192 130 166 160 Z" fill="${u('bump')}" stroke="#000" stroke-width="1.5"/><path d="M160 146 C182 122 226 110 296 108" fill="none" stroke="${u('redside')}" stroke-width="2.5" stroke-linecap="round"/><text class="lbl" x="232" y="124" font-size="9">L1</text></g></g>
+  <g transform="translate(0,-17)"><g class="k" data-src="r1"><path d="M650 150 C632 118 578 100 500 101 L499 122 C560 120 608 130 634 160 Z" fill="${u('bump')}" stroke="#000" stroke-width="1.5"/><path d="M640 146 C618 122 574 110 504 108" fill="none" stroke="${u('redside')}" stroke-width="2.5" stroke-linecap="round"/><text class="lbl" x="568" y="124" font-size="9">R1</text></g></g>
+
+  <!-- shell -->
+  <path d="${body}" fill="${u('body')}" filter="${u('sh')}"/>
+  <path class="nopt" d="${body}" fill="${u('grain')}"/>
+  <path class="nopt" d="${body}" fill="${u('sheen')}"/>
+  <path class="nopt" d="${body}" fill="none" stroke="#3a3a42" stroke-width="1.5" opacity=".7"/>
+  <path class="nopt" d="M88 230 C70 300 52 380 50 420 C49 455 66 482 96 484" fill="none" stroke="#d0122a" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+  <path class="nopt" d="M712 230 C730 300 748 380 750 420 C751 455 734 482 704 484" fill="none" stroke="#d0122a" stroke-width="3" stroke-linecap="round" opacity=".85"/>
+
+  <!-- light bar + touchpad -->
+  <path id="${id}-lbg" class="nopt" d="M316 96 L484 96" stroke="#ff2a3d" stroke-width="12" stroke-linecap="round" filter="${u('glow')}" opacity=".9"/>
+  <path id="${id}-lb" class="nopt" d="M316 96 L484 96" stroke="#ff2a3d" stroke-width="5" stroke-linecap="round"/>
+  <g class="k" data-src="touch">
+    <path d="M304 102 L496 102 L492 192 Q490 208 474 208 L326 208 Q310 208 308 192 Z" fill="${u('tp')}" stroke="#000" stroke-width="2"/>
+    <path d="M310 106 L490 106" stroke="#fff" stroke-opacity=".06" stroke-width="2"/>
+    <g clip-path="${u('tpclip')}" id="${id}-touch"></g></g>
+
+  <!-- d-pad -->
+  <circle class="nopt" cx="190" cy="210" r="66" fill="${u('well')}" opacity=".85"/>
+  ${arm('up','M174 154 h32 v36 l-16 16 l-16 -16 z','M190 164 l7 10 h-14 z')}
+  ${arm('down','M174 266 h32 v-36 l-16 -16 l-16 16 z','M190 256 l7 -10 h-14 z')}
+  ${arm('left','M134 194 v32 h36 l16 -16 l-16 -16 z','M144 210 l10 -7 v14 z')}
+  ${arm('right','M246 194 v32 h-36 l-16 -16 l16 -16 z','M236 210 l-10 -7 v14 z')}
+
+  <!-- face buttons -->
+  <circle class="nopt" cx="610" cy="210" r="74" fill="${u('well')}" opacity=".85"/>
+  ${face('triangle', 610, 164, (x, y) => `<path d="M${x} ${y-10} l10 17 h-20 z"/>`, '#3fd3a8')}
+  ${face('circle', 656, 210, (x, y) => `<circle cx="${x}" cy="${y}" r="9.5"/>`, '#ff5a6e')}
+  ${face('cross', 610, 256, (x, y) => `<path d="M${x-8} ${y-8} l16 16 M${x+8} ${y-8} l-16 16"/>`, '#7aa8ff')}
+  ${face('square', 564, 210, (x, y) => `<rect x="${x-8.5}" y="${y-8.5}" width="17" height="17" rx="1"/>`, '#ee8ccf')}
+
+  <!-- share / options -->
+  <g class="k" data-src="share"><rect x="268" y="124" width="13" height="30" rx="6.5" fill="${u('btn')}" stroke="#000" stroke-width="1.5" transform="rotate(-18 274 139)"/></g>
+  <g class="k" data-src="options"><rect x="519" y="124" width="13" height="30" rx="6.5" fill="${u('btn')}" stroke="#000" stroke-width="1.5" transform="rotate(18 526 139)"/></g>
+  <text class="lbl" x="262" y="172" font-size="8">SHARE</text><text class="lbl" x="540" y="172" font-size="8">OPTIONS</text>
+
+  <!-- speaker + PS -->
+  <g class="nopt" fill="#000" opacity=".8">${[...Array(15)].map((_, i) => `<circle cx="${384 + (i%5)*8}" cy="${238 + Math.floor(i/5)*7}" r="1.8"/>`).join('')}</g>
+  <g class="k" data-src="ps"><circle cx="400" cy="300" r="18" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/><circle cx="400" cy="300" r="18" fill="none" stroke="#d0122a" stroke-opacity=".6" stroke-width="1.2"/><text x="400" y="304.5" text-anchor="middle" font-size="11" font-weight="700" fill="#9a9aa5" class="nopt">PS</text></g>
+
+  <!-- sticks -->
+  ${stick('l3', 300, 300, 'ls')}
+  ${stick('r3', 500, 300, 'rs')}
+  </svg>`;
+}
+function mountPads(){
+  for (const [host, id] of PAD_HOSTS) {
+    const h = $(host); if (!h) continue;
+    h.innerHTML = padSVG(id);
+    $$(`#${id} .k`).forEach(el => el.addEventListener('click', () => {
+      const src = el.dataset.src;
+      if (id === 'pst' && (src === 'l3' || src === 'r3')) { setSide(src === 'l3' ? 'left' : 'right'); return; }
+      if (id === 'pst' && (src === 'l2' || src === 'r2')) { go('triggers'); return; }
+      selSrc = src; go('buttons'); renderMap();
+    }));
+  }
+}
+function updatePads(){
+  const b = S.btn || {};
+  const page = ($('.page.on') || {}).id;
+  for (const [, id] of PAD_HOSTS) {
+    const svg = document.getElementById(id); if (!svg || !svg.closest('.page.on')) continue;
+    $$('.k', svg).forEach(el => {
+      const src = el.dataset.src;
+      el.classList.toggle('on', !!b[src]);
+      el.classList.toggle('sel', (id === 'pb' && src === selSrc) || (id === 'pst' && src === (side === 'left' ? 'l3' : 'r3')));
+    });
+    if (S.connected) {
+      const tilt = (el, x, y, pressed) => { const dx = (x-127.5)/127.5*15, dy = (y-127.5)/127.5*15;
+        el.style.transform = `translate(${dx}px,${dy}px) scale(${pressed ? .93 : 1})`; };
+      tilt($(`#${id}-ls`), S.lx, S.ly, b.l3); tilt($(`#${id}-rs`), S.rx, S.ry, b.r3);
+      for (const t of ['l2', 'r2']) { const v = (t === 'l2' ? S.l2v : S.r2v) / 255;
+        $(`#${id}-${t}`).style.transform = `translateY(${v*12}px) scaleY(${1 - v*.12})`;
+        $(`#${id}-${t}p`).setAttribute('opacity', v * .45); }
+      $(`#${id}-touch`).innerHTML = (S.touches||[]).map(t => { const x = 304 + t[0]/1920*192, y = 102 + t[1]/942*106;
+        return `<circle cx="${x}" cy="${y}" r="14" fill="${P ? P.color : '#ff2a3d'}" opacity=".35"/><circle class="touchpt" cx="${x}" cy="${y}" r="5"/>`; }).join('');
+    }
+    const col = P ? P.color : '#ff2a3d';
+    $(`#${id}-lb`).setAttribute('stroke', col); $(`#${id}-lbg`).setAttribute('stroke', col);
+  }
+}
+
+/* ---------------- navigation ---------------- */
+function buildNav(){
+  $('#nav').innerHTML = PAGES.map(([id, nm, d]) => `<button data-p="${id}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="${d}"/></svg>${nm}</button>`).join('');
+  $$('#nav button').forEach(b => b.onclick = () => go(b.dataset.p));
+}
+function go(id){
+  $$('.page').forEach(p => p.classList.toggle('on', p.id === 'p-' + id));
+  $$('#nav button').forEach(b => b.classList.toggle('on', b.dataset.p === id));
+  $('#title').textContent = PAGES.find(p => p[0] === id)[1];
+  try { localStorage.setItem('page', id); } catch(e) {}
+}
+function toast(t){ const el = $('#toast'); el.textContent = t; el.classList.add('on'); clearTimeout(el._t); el._t = setTimeout(() => el.classList.remove('on'), 1600); }
+
+/* ---------------- profile save ---------------- */
+let saveT = null;
+function save(render = true){ clearTimeout(saveT); saveT = setTimeout(async () => { const r = await api.save_profile(P); if (r && r.profile) { INIT.profiles = r.profiles; INIT.current = r.current; renderProfiles(); } }, 120); if (render) renderAll(); }
+
+/* ---------------- render ---------------- */
+function fmt(el, v){
+  if (el.hasAttribute('data-hz')) return Math.round(+v) + ' Hz';
+  if (el.hasAttribute('data-hr')) { v = +v; return v === 0 ? 'Off' : Math.round(v * 100) + '%'; }
+  if (el.hasAttribute('data-jit')) { v = +v; return v === 0 ? 'Off' : v < 0 ? `Boost ${(-v*100).toFixed(1)}%` : `Ignore ${(v*100).toFixed(1)}%`; }
+  if (el.hasAttribute('data-pct')) return Math.round(v*100) + '%';
+  if (el.hasAttribute('data-x')) return (+v).toFixed(2) + '×';
+  if (el.hasAttribute('data-deg')) return v + '°';
+  if (el.hasAttribute('data-res')) return +v === 0 ? 'Native' : v;
+  return v;
+}
+function renderProfiles(){
+  $('#profsel').innerHTML = INIT.profiles.map(n => `<option ${n===INIT.current?'selected':''}>${esc(n)}</option>`).join('');
+  $('#profcards').innerHTML = INIT.profiles.map(n => `<div class="prof ${n===INIT.current?'on':''}" data-n="${esc(n)}" style="--c:${n===INIT.current?P.color:'#555'}"><b>${esc(n)}</b><span>${n===INIT.current?'Active':'Click to use'}</span></div>`).join('');
+  $$('#profcards .prof').forEach(el => el.onclick = () => selectProfile(el.dataset.n));
+}
+function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+const KEYNAMES = [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'].concat(Array.from({length:12}, (_, i) => 'F' + (i+1)),
+  ['SPACE','ENTER','ESC','TAB','SHIFT','CTRL','ALT','BACKSPACE','CAPSLOCK','UP','DOWN','LEFT','RIGHT','INSERT','DELETE','HOME','END','PAGEUP','PAGEDOWN',
+   'MINUS','EQUALS','COMMA','PERIOD','SLASH','SEMICOLON','QUOTE','LBRACKET','RBRACKET','BACKSLASH','GRAVE','PRINTSCREEN','WIN']);
+const KEYLABEL = {SPACE:'Space',ENTER:'Enter',ESC:'Esc',TAB:'Tab',SHIFT:'Shift',CTRL:'Ctrl',ALT:'Alt',BACKSPACE:'Backspace',CAPSLOCK:'Caps Lock',UP:'↑',DOWN:'↓',LEFT:'←',RIGHT:'→',
+  PAGEUP:'Page Up',PAGEDOWN:'Page Down',MINUS:'-',EQUALS:'=',COMMA:',',PERIOD:'.',SLASH:'/',SEMICOLON:';',QUOTE:"'",LBRACKET:'[',RBRACKET:']',BACKSLASH:'\\',GRAVE:'`',PRINTSCREEN:'Print Screen',WIN:'Windows key'};
+const TARGET_GROUPS = [
+  ['Controller', ['A','B','X','Y','LB','RB','LT','RT','LS','RS','BACK','START','GUIDE','TOUCHPAD','UP','DOWN','LEFT','RIGHT'].map(t => [t, null])],
+  ['Mouse', [['MOUSE_L','Left click'],['MOUSE_R','Right click'],['MOUSE_M','Middle click'],['MOUSE_X1','Mouse back'],['MOUSE_X2','Mouse forward'],['WHEEL_UP','Scroll up'],['WHEEL_DOWN','Scroll down']]],
+  ['Media', [['KEY:PLAYPAUSE','Play / Pause'],['KEY:NEXT','Next track'],['KEY:PREV','Previous track'],['KEY:VOLUP','Volume up'],['KEY:VOLDOWN','Volume down'],['KEY:MUTE','Mute']]],
+  ['Keyboard', KEYNAMES.map(k => ['KEY:' + k, 'Key ' + (KEYLABEL[k] || k)])],
+];
+const PS_NAMES = {A:'✕ Cross',B:'○ Circle',X:'□ Square',Y:'△ Triangle',LB:'L1',RB:'R1',LT:'L2',RT:'R2',LS:'L3',RS:'R3',BACK:'Share',START:'Options',GUIDE:'PS button',TOUCHPAD:'Touchpad click',UP:'D-pad ▲',DOWN:'D-pad ▼',LEFT:'D-pad ◀',RIGHT:'D-pad ▶'};
+const XB_NAMES = {A:'A',B:'B',X:'X',Y:'Y',LB:'LB',RB:'RB',LT:'LT',RT:'RT',LS:'LS (stick click)',RS:'RS (stick click)',BACK:'Back / View',START:'Start / Menu',GUIDE:'Xbox button',TOUCHPAD:'Touchpad (= Back)',UP:'D-pad ▲',DOWN:'D-pad ▼',LEFT:'D-pad ◀',RIGHT:'D-pad ▶'};
+const outMode = () => ((INIT && INIT.settings) || {}).output === 'ps' ? 'ps' : 'xbox';
+const padName = t => (outMode() === 'ps' ? PS_NAMES : XB_NAMES)[t] || t;
+function renderOutPick(){
+  const m = outMode();
+  const xb = '<svg width="26" height="26" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#107c10"/><path d="M7 7l10 10M17 7L7 17" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  const ps = '<svg width="26" height="26" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="6" fill="#0070d1"/><path d="M8 15.5l3-6 3 6zM15.5 9.5h3v3h-3z" fill="none" stroke="#fff" stroke-width="1.6"/></svg>';
+  $$('.outpick').forEach(h => {
+    h.innerHTML = `<div class="small muted" style="margin-bottom:8px">Games see your controller as</div><div class="outbtns">
+      <button data-out="xbox" class="${m==='xbox'?'on':''}">${xb}<div><b>Xbox controller</b><span>Works in almost every PC game · game vibration</span></div></button>
+      <button data-out="ps" class="${m==='ps'?'on':''}">${ps}<div><b>PlayStation controller</b><span>PlayStation button icons in games</span></div></button></div>
+      ${m==='ps' ? '<div class="note info" style="margin-top:10px">PlayStation mode: games that support PlayStation controllers show ✕ ○ □ △ prompts. Game vibration is only passed through in Xbox mode. If a game reacts twice to each press, turn on Steam Input or use HidHide to hide your real controller.</div>' : ''}`;
+    $$('[data-out]', h).forEach(b => b.onclick = async () => {
+      if (b.dataset.out === outMode()) return;
+      INIT.settings = INIT.settings || {}; INIT.settings.output = b.dataset.out;
+      await api.set_setting('output', b.dataset.out);
+      renderOutPick(); renderMap();
+      toast(b.dataset.out === 'ps' ? 'Games now see a PlayStation controller' : 'Games now see an Xbox controller');
+    });
+  });
+}
+const SHORTCUTS = [
+  ['KEYS:WIN+ALT+G', 'Clip last 30 s (Win+Alt+G)'],
+  ['KEYS:WIN+ALT+R', 'Start / stop recording (Win+Alt+R)'],
+  ['KEYS:WIN+ALT+PRINTSCREEN', 'Game screenshot (Win+Alt+PrtScn)'],
+  ['KEYS:WIN+G', 'Open Xbox Game Bar (Win+G)'],
+  ['KEYS:WIN+SHIFT+S', 'Snip screenshot (Win+Shift+S)'],
+  ['KEYS:ALT+F10', 'NVIDIA save replay (Alt+F10)'],
+  ['KEYS:ALT+Z', 'NVIDIA overlay (Alt+Z)'],
+  ['KEYS:CTRL+SHIFT+M', 'Discord mute (Ctrl+Shift+M)'],
+  ['KEYS:CTRL+SHIFT+D', 'Discord deafen (Ctrl+Shift+D)'],
+  ['KEYS:ALT+TAB', 'Switch window (Alt+Tab)'],
+  ['KEYS:WIN+D', 'Show desktop (Win+D)'],
+  ['KEYS:CTRL+SHIFT+ESC', 'Task Manager (Ctrl+Shift+Esc)'],
+];
+const MODNAME = {CTRL:'Ctrl', SHIFT:'Shift', ALT:'Alt', WIN:'Win'};
+const comboLabel = v => v.slice(5).split('+').map(k => MODNAME[k] || KEYLABEL[k] || k).join(' + ');
+function targetOptions(cur){
+  const custom = cur && cur.startsWith('KEYS:') && !SHORTCUTS.some(s => s[0] === cur)
+    ? `<option value="${cur}" selected>⌨ ${esc(comboLabel(cur))}</option>` : '';
+  return `<option value="NONE" ${cur==='NONE'?'selected':''}>Disabled</option>
+    <optgroup label="Shortcuts (key combos)">${SHORTCUTS.map(([v, l]) => `<option value="${v}" ${cur===v?'selected':''}>${esc(l)}</option>`).join('')}${custom}
+    <option value="__combo__">＋ Custom combo…</option></optgroup>` + TARGET_GROUPS.map(([g, list]) =>
+    `<optgroup label="${g === 'Controller' ? (outMode() === 'ps' ? 'PlayStation' : 'Xbox') : g}">${list.map(([v, l]) => `<option value="${v}" ${cur===v?'selected':''}>${esc(l || padName(v))}</option>`).join('')}</optgroup>`).join('');
+}
+let mapLayer = 0;
+function renderMap(){
+  P.shift = P.shift || {button: 'none', layer: {}}; P.shift.layer = P.shift.layer || {};
+  const sb = P.shift.button || 'none';
+  $('#shiftbtn').innerHTML = `<option value="none">None</option>` + INIT.sources.map(x => `<option value="${x}" ${x===sb?'selected':''}>${NAMES[x]}</option>`).join('');
+  $('#shiftbtn').onchange = e => { P.shift.button = e.target.value; if (e.target.value !== 'none') mapLayer = 1; save(); renderMap(); };
+  if (sb === 'none') mapLayer = 0;
+  $$('#layertabs button').forEach(b => { b.classList.toggle('on', +b.dataset.ly === mapLayer); b.disabled = +b.dataset.ly === 1 && sb === 'none';
+    b.onclick = () => { if (b.disabled) return; mapLayer = +b.dataset.ly; renderMap(); }; });
+  $('#layernote').style.display = mapLayer ? '' : 'none'; $('#layerbtn').textContent = NAMES[sb] || '';
+  if (mapLayer) {
+    $('#maplist').innerHTML = INIT.sources.filter(x => x !== sb).map(x => `<div class="mapitem ${P.shift.layer[x]?'live':''}" data-m="${x}">
+      <span class="nm">${NAMES[x]}</span><select data-lmap="${x}"><option value="">Same as normal</option>${targetOptions(P.shift.layer[x] || '')}</select></div>`).join('');
+    $$('[data-lmap]').forEach(el => el.onchange = () => {
+      const src = el.dataset.lmap;
+      if (el.value === '__combo__') { el.value = P.shift.layer[src] || ''; openCombo(P.shift.layer[src], v => { P.shift.layer[src] = v; save(); renderMap(); }); return; }
+      if (el.value) P.shift.layer[src] = el.value; else delete P.shift.layer[src]; save(); renderMap(); });
+    return;
+  }
+  $('#maplist').innerHTML = INIT.sources.map(s => `<div class="mapitem ${s===selSrc?'sel':''}" data-m="${s}">
+    <span class="nm">${NAMES[s]}${s===sb?' <span class="badge">shift</span>':''}</span>
+    <select data-map="${s}">${targetOptions(P.map[s])}</select>
+    <span class="tb" title="Rapid fire while held">Turbo<label class="tog" style="transform:scale(.8)"><input type="checkbox" data-turbo="${s}" ${P.turbo[s]?'checked':''}><span></span></label></span>
+    <span class="tb" title="Press once to hold, press again to release">Toggle<label class="tog" style="transform:scale(.8)"><input type="checkbox" data-toggle="${s}" ${(P.toggle||{})[s]?'checked':''}><span></span></label></span></div>`).join('');
+  $$('[data-toggle]').forEach(el => el.onchange = () => { P.toggle = P.toggle || {}; if (el.checked) P.toggle[el.dataset.toggle] = true; else delete P.toggle[el.dataset.toggle]; save(); });
+  $$('[data-map]').forEach(el => el.onchange = () => {
+    if (el.value === '__combo__') { const src = el.dataset.map; el.value = P.map[src]; openCombo(P.map[src], v => { P.map[src] = v; save(); renderMap(); }); return; }
+    P.map[el.dataset.map] = el.value; save(); });
+  $$('[data-turbo]').forEach(el => el.onchange = () => { if (el.checked) P.turbo[el.dataset.turbo] = true; else delete P.turbo[el.dataset.turbo]; save(); });
+  $$('.mapitem').forEach(el => el.onclick = e => { if (e.target.tagName !== 'SELECT' && e.target.tagName !== 'INPUT') { selSrc = el.dataset.m; $$('.mapitem').forEach(x => x.classList.toggle('sel', x === el)); } });
+  const sel = $(`.mapitem[data-m="${selSrc}"]`); if (sel) sel.scrollIntoView({block:'nearest'});
+}
+function bindGroup(attr, getObj){
+  $$(`[data-${attr}]`).forEach(el => {
+    const key = el.dataset[attr];
+    const obj = getObj(); if (!obj) return;
+    if (el.type === 'checkbox') el.checked = !!obj[key]; else el.value = obj[key];
+    const out = $(`[data-${attr}v="${key}"]`); if (out) out.textContent = fmt(out, obj[key]);
+    el.oninput = el.onchange = () => {
+      const o = getObj();
+      o[key] = el.type === 'checkbox' ? el.checked : (el.tagName === 'SELECT' ? el.value : parseFloat(el.value));
+      if (out) out.textContent = fmt(out, o[key]);
+      save();
+    };
+  });
+}
+function renderAll(){
+  bindGroup('s', () => P.sticks[side]);
+  bindGroup('g', () => P.gyro);
+  bindGroup('r', () => P.rumble);
+  bindGroup('l', () => P.light);
+  // top-level keys
+  $$('[data-k]').forEach(el => { const k = el.dataset.k; if (el.type==='checkbox') el.checked = !!P[k]; else el.value = P[k];
+    const out = $(`[data-v="${k}"]`); if (out) out.textContent = P[k] + (k==='turbo_rate'?' /s':'');
+    el.oninput = el.onchange = () => { P[k] = el.type==='checkbox' ? el.checked : parseFloat(el.value); if (out) out.textContent = P[k] + (k==='turbo_rate'?' /s':''); save(); }; });
+  // segmented shape
+  const sc = P.sticks[side];
+  $$('[data-seg="shape"] button').forEach(b => { b.classList.toggle('on', sc.shape === b.dataset.o); b.onclick = () => { sc.shape = b.dataset.o; save(); }; });
+  $$('[data-show]').forEach(el => el.style.display = el.dataset.show.split(' ').includes(sc.shape) ? '' : 'none');
+  $('#lightcol').value = P.color;
+  $$('#swatches i').forEach(i => i.classList.toggle('on', i.dataset.c.toLowerCase() === P.color.toLowerCase()));
+  renderTriggers(); renderMacros(); renderChips();
+  bindGroup('mo', () => P.mouse);
+  const LM = [['static','Static'],['breathe','Breathing'],['rainbow','Rainbow'],['battery','Battery level']];
+  $('#lightmodes').innerHTML = LM.map(([k, n]) => `<button data-lm="${k}" class="${(P.light.mode||'static')===k?'on':''}">${n}</button>`).join('');
+  $$('#lightmodes button').forEach(b => b.onclick = () => { P.light.mode = b.dataset.lm; save(); });
+  renderGames();
+}
+function renderGames(){
+  const g = P.games || [];
+  $('#gamechips').innerHTML = g.length ? g.map((x, i) => `<span class="gamechip">${esc(x)}<button data-rmg="${i}" title="Unlink">×</button></span>`).join('')
+    : '<span class="muted small">No games linked to this profile yet.</span>';
+  $$('[data-rmg]').forEach(b => b.onclick = () => { P.games.splice(+b.dataset.rmg, 1); save(); });
+}
+function linkGame(exe){
+  exe = (exe || '').trim().toLowerCase(); if (!exe) return; if (!exe.endsWith('.exe')) exe += '.exe';
+  P.games = P.games || []; if (!P.games.includes(exe)) P.games.push(exe); save(); toast(`${exe} will switch to "${P.name}"`);
+}
+function renderDevices(list){
+  const pref = (INIT.settings||{}).device || '';
+  const rows = [{id:'', name:'Automatic', kind:'Auto', conn:'first controller found', active:false}].concat(list || []);
+  $('#devlist').innerHTML = rows.map(d => `<div class="dev ${(d.id||'') === pref ? 'on' : ''}" data-dev="${esc(d.id)}">
+    <div class="ic ${d.kind}">${d.kind === 'Auto' ? 'A' : d.kind}</div><div style="flex:1"><b>${esc(d.name)}</b><span>${esc(d.conn)}${d.active ? ' · in use now' : ''}</span></div>
+    ${d.active ? '<span class="badge ok">Active</span>' : ''}</div>`).join('') + (list && list.length ? '' : '<div class="muted small">No controller connected.</div>');
+  $$('#devlist .dev').forEach(el => el.onclick = async () => {
+    const id = el.dataset.dev; INIT.settings = INIT.settings || {}; INIT.settings.device = id || null;
+    await api.set_setting('device', id || null); renderDevices(list); toast(id ? 'Switching controller…' : 'Automatic controller choice');
+  });
+}
+async function refreshDevices(){ try { renderDevices(await api.list_devices()); } catch(e) {} }
+function renderShakeGames(){
+  const g = (INIT.settings||{}).shake_games || [];
+  $('#shakechips').innerHTML = g.length ? g.map((x, i) => `<span class="gamechip">${esc(x)}<button data-rms="${i}" title="Remove">×</button></span>`).join('')
+    : '<span class="muted small">No single-player games added yet. Shake stays off until you add one.</span>';
+  $$('[data-rms]').forEach(b => b.onclick = () => { g.splice(+b.dataset.rms, 1); saveShakeGames(g); });
+}
+function saveShakeGames(g){ INIT.settings = INIT.settings || {}; INIT.settings.shake_games = g; api.set_setting('shake_games', g); renderShakeGames(); }
+function addShakeGame(exe){
+  exe = (exe || '').trim().toLowerCase(); if (!exe) return; if (!exe.endsWith('.exe')) exe += '.exe';
+  const g = (INIT.settings||{}).shake_games || []; if (!g.includes(exe)) g.push(exe); saveShakeGames(g); toast(`Shake allowed in ${exe}`);
+}
+async function refreshRecent(){
+  try { const r = await api.recent_apps(); const sel = $('#recentapps'), cur = sel.value;
+    sel.innerHTML = '<option value="">Pick a recently used app…</option>' + (r||[]).map(x => `<option ${x===cur?'selected':''}>${esc(x)}</option>`).join('');
+    const s2 = $('#shakerecent'); if (s2) { const c2 = s2.value; s2.innerHTML = '<option value="">Pick a recently used game…</option>' + (r||[]).map(x => `<option ${x===c2?'selected':''}>${esc(x)}</option>`).join(''); } } catch(e) {}
+}
+function b64e(o){ return 'EDGEHUB1:' + btoa(unescape(encodeURIComponent(JSON.stringify(o)))); }
+function b64d(t){ t = t.trim().replace(/^EDGEHUB1:/, ''); return JSON.parse(decodeURIComponent(escape(atob(t)))); }
+function renderTriggers(){
+  const host = $('#trigcards');
+  if (!host.children.length) {
+    host.innerHTML = ['left','right'].map(t => `<div class="card big"><h3>${t==='left'?'L2':'R2'} trigger <span class="sub">click to add points · drag to shape</span></h3>
+      <div class="chips" id="tchips-${t}"></div>
+      <div class="curvewrap"><canvas id="tcv-${t}" width="700" height="420"></canvas></div>
+      <div class="row" style="margin-top:14px"><label>Dead zone</label><input type="range" min="0" max="0.6" step="0.01" data-t="${t}:start"><span class="val" data-tv="${t}:start"></span></div>
+      <span class="help">How far you squeeze before anything happens.</span>
+      <div class="row"><label>Max range</label><input type="range" min="0.2" max="1" step="0.01" data-t="${t}:end"><span class="val" data-tv="${t}:end"></span></div>
+      <span class="help">Where it counts as a full press. Lower it for a shorter, faster trigger.</span>
+      <div class="row"><label>Anti-dead zone</label><input type="range" min="0" max="0.5" step="0.01" data-t="${t}:anti"><span class="val" data-tv="${t}:anti"></span></div>
+      <span class="help">Skips past the game's own trigger dead zone so a light touch registers.</span>
+      <div class="row"><label>Hair trigger</label><label class="tog"><input type="checkbox" data-t="${t}:digital"><span></span></label><span class="muted small">Instant full press as soon as you pass the dead zone</span></div>
+      <div class="row"><span class="muted small">Quick setups:</span><button class="btn" data-tp="${t}:fps">Shooter</button><button class="btn" data-tp="${t}:race">Racing</button><button class="btn" data-tp="${t}:def">Reset</button></div></div>`).join('');
+    ['left','right'].forEach(t => trigEd[t] = makeCurveEditor($(`#tcv-${t}`), () => P.triggers[t], 'trigger', () => S.connected ? (t === 'left' ? S.l2v : S.r2v)/255 : null));
+  }
+  $$('[data-t]').forEach(el => { const [t,k] = el.dataset.t.split(':'); const o = P.triggers[t];
+    if (el.type==='checkbox') el.checked = !!o[k]; else el.value = o[k];
+    const out = $(`[data-tv="${t}:${k}"]`); if (out) out.textContent = Math.round(o[k]*100)+'%';
+    el.oninput = el.onchange = () => { o[k] = el.type==='checkbox'?el.checked:(el.tagName==='SELECT'?el.value:parseFloat(el.value)); if (out) out.textContent = Math.round(o[k]*100)+'%'; save(); }; });
+  $$('[data-tp]').forEach(el => el.onclick = () => { const [t,k] = el.dataset.tp.split(':');
+    Object.assign(P.triggers[t], k==='fps'?{start:.03,end:.45,anti:0,curve:'aggressive',digital:false}:k==='race'?{start:.01,end:1,anti:0,curve:'precise',digital:false}:{start:.02,end:1,anti:0,curve:'linear',digital:false}); save(); toast('Preset applied'); });
+}
+/* ---------------- key combo builder ---------------- */
+const CODEKEY = c => {
+  if (/^Key[A-Z]$/.test(c)) return c.slice(3);
+  if (/^Digit[0-9]$/.test(c)) return c.slice(5);
+  if (/^F([1-9]|1[0-9]|2[0-4])$/.test(c)) return c;
+  return ({Space:'SPACE',Enter:'ENTER',Escape:'ESC',Tab:'TAB',Backspace:'BACKSPACE',CapsLock:'CAPSLOCK',ArrowUp:'UP',ArrowDown:'DOWN',ArrowLeft:'LEFT',ArrowRight:'RIGHT',
+    Insert:'INSERT',Delete:'DELETE',Home:'HOME',End:'END',PageUp:'PAGEUP',PageDown:'PAGEDOWN',PrintScreen:'PRINTSCREEN',Minus:'MINUS',Equal:'EQUALS',Comma:'COMMA',
+    Period:'PERIOD',Slash:'SLASH',Semicolon:'SEMICOLON',Quote:'QUOTE',BracketLeft:'LBRACKET',BracketRight:'RBRACKET',Backslash:'BACKSLASH',Backquote:'GRAVE'})[c] || null;
+};
+let comboDone = null;
+function openCombo(cur, done){
+  comboDone = done;
+  const parts = cur && cur.startsWith('KEYS:') ? cur.slice(5).split('+') : [];
+  const mods = ['CTRL','SHIFT','ALT','WIN'];
+  $('#cmods').innerHTML = mods.map(m => `<label class="${parts.includes(m)?'on':''}"><input type="checkbox" value="${m}" ${parts.includes(m)?'checked':''}>${MODNAME[m]}</label>`).join('');
+  const keys = KEYNAMES.filter(k => !mods.includes(k));
+  const main = parts.find(p => !mods.includes(p)) || 'G';
+  $('#ckey').innerHTML = keys.map(k => `<option value="${k}" ${k===main?'selected':''}>${esc(KEYLABEL[k] || k)}</option>`).join('');
+  const update = () => { $$('#cmods label').forEach(l => l.classList.toggle('on', l.querySelector('input').checked)); $('#cprev').textContent = comboLabel(comboValue()); };
+  $$('#cmods input').forEach(i => i.onchange = update);
+  $('#ckey').onchange = update;
+  $('#ccap').onkeydown = e => {
+    e.preventDefault(); e.stopPropagation();
+    const set = (m, on) => { const i = $(`#cmods input[value="${m}"]`); i.checked = on; };
+    set('CTRL', e.ctrlKey); set('SHIFT', e.shiftKey); set('ALT', e.altKey);
+    if (e.metaKey) { set('WIN', true); $('#cwin').style.display = ''; }
+    const k = CODEKEY(e.code); if (k) $('#ckey').value = k;
+    $('#ccap').textContent = 'Got it: ' + comboLabel(comboValue()) + '  (press again to change)';
+    update();
+  };
+  $('#ccap').textContent = 'Click here, then press the keys on your keyboard'; $('#cwin').style.display = 'none';
+  update();
+  $('#combomodal').classList.add('on');
+}
+function comboValue(){
+  const mods = $$('#cmods input').filter(i => i.checked).map(i => i.value);
+  return 'KEYS:' + [...mods, $('#ckey').value].join('+');
+}
+function closeCombo(){ $('#combomodal').classList.remove('on'); comboDone = null; }
+
+/* ---------------- macro builder ---------------- */
+const MCTRL = ['A','B','X','Y','LB','RB','LT','RT','LS','RS','BACK','START','GUIDE','TOUCHPAD','UP','DOWN','LEFT','RIGHT'];
+const MMOUSE = {MOUSE_L:'Left click', MOUSE_R:'Right click', MOUSE_M:'Middle click'};
+const MMEDIA = {PLAYPAUSE:'Play/Pause', NEXT:'Next track', PREV:'Prev track', VOLUP:'Vol +', VOLDOWN:'Vol −', MUTE:'Mute'};
+const MTEMPLATES = [
+  {name:'Rapid fire', trigger:'r2', steps:'RT 30; wait 30', repeat:true, block:true, desc:'Hold R2 to fire as fast as possible'},
+  {name:'Double tap', trigger:'touch', steps:'A 40; wait 40; A 40', repeat:false, block:true, desc:'Two quick presses, one tap'},
+  {name:'Jump shot', trigger:'touch', steps:'A 40; wait 60; RT 80', repeat:false, block:true, desc:'Jump, then fire mid-air'},
+  {name:'Drop shot', trigger:'touch', steps:'B+RT 150', repeat:false, block:true, desc:'Go prone while firing'},
+  {name:'Crouch spam', trigger:'touch', steps:'B 40; wait 40', repeat:true, block:true, desc:'Hold to crouch up and down'},
+  {name:'Reload cancel', trigger:'touch', steps:'X 50; wait 80; Y 40; wait 40; Y 40', repeat:false, block:true, desc:'Reload, then swap twice'},
+  {name:'Quick scope', trigger:'touch', steps:'LT 180; LT+RT 60', repeat:false, block:true, desc:'Aim in and fire'},
+];
+let mSel = 0, mStep = null, mRec = null, mListen = null, mPlay = null;
+
+function tokLabel(t){
+  if (t.startsWith('KEY:')) { const k = t.slice(4); return MMEDIA[k] || ('⌨ ' + (KEYLABEL[k] || k)); }
+  return MMOUSE[t] || padName(t);
+}
+function parseSteps(text){
+  return (text || '').replace(/\n/g, ';').split(';').map(x => x.trim()).filter(Boolean).map(part => {
+    const bits = part.split(/\s+/); let ms = 50;
+    if (bits.length >= 2 && /^\d+$/.test(bits[bits.length-1])) ms = Math.max(1, Math.min(10000, +bits.pop()));
+    const name = bits.join(' ').toUpperCase();
+    if (['WAIT','PAUSE','DELAY',''].includes(name)) return {btns: [], ms};
+    return {btns: name.split('+').map(t => t.trim()).filter(Boolean), ms};
+  });
+}
+const stepsText = steps => steps.map(s => (s.btns.length ? s.btns.join('+') : 'wait') + ' ' + Math.round(s.ms)).join('; ');
+const curMacro = () => P.macros[mSel];
+function setSteps(steps, render = true){ curMacro().steps = stepsText(steps); save(false); if (render) renderMacroEditor(); }
+
+function renderMacros(){
+  if (mSel >= P.macros.length) mSel = Math.max(0, P.macros.length - 1);
+  $('#mlist').innerHTML = P.macros.length ? P.macros.map((m, i) => `<div class="mitem ${i===mSel?'on':''}" data-mi="${i}">
+      <div><b>${esc(m.name || 'Macro ' + (i+1))}</b><span>${esc(NAMES[m.trigger] || m.trigger)} · ${parseSteps(m.steps).length} steps</span></div></div>`).join('')
+    : '<div class="muted small" style="margin-bottom:10px">No macros yet. Make one, or pick a template.</div>';
+  $$('#mlist .mitem').forEach(el => el.onclick = () => { mSel = +el.dataset.mi; mStep = null; stopRec(); renderMacros(); });
+  $('#mtemplates').innerHTML = MTEMPLATES.map((t, i) => `<button data-tp="${i}"><b>${t.name}</b><span>${t.desc}</span></button>`).join('');
+  $$('#mtemplates button').forEach(b => b.onclick = () => { const t = MTEMPLATES[+b.dataset.tp];
+    P.macros.push({name:t.name, trigger:t.trigger, steps:t.steps, repeat:t.repeat, block:t.block}); mSel = P.macros.length - 1; mStep = null; save(); toast(`Added "${t.name}". Set its trigger button.`); });
+  renderMacroEditor();
+}
+
+function renderMacroEditor(){
+  const host = $('#meditor'), m = curMacro();
+  if (!m) { host.innerHTML = `<div class="empty"><div style="font-size:40px">⚡</div><b>One button, a whole combo</b><p class="muted">Click <b>+ New macro</b> or a template on the left.<br>Then press <b>Record</b> and play the combo on your controller.</p></div>`; return; }
+  const steps = parseSteps(m.steps), total = steps.reduce((a, s) => a + s.ms, 0);
+  const listening = mListen === mSel, recording = mRec && mRec.idx === mSel;
+  host.innerHTML = `
+    <div class="row" style="margin-top:0"><input type="text" id="mname" value="${esc(m.name || 'Macro ' + (mSel+1))}" style="font-size:16px;font-weight:600;max-width:320px">
+      <div class="spacer"></div><button class="btn" id="mdel">Delete macro</button></div>
+    <div class="mtrig">
+      <div><span class="muted small">PLAYS WHEN YOU PRESS</span><b>${esc(NAMES[m.trigger] || m.trigger)}</b></div>
+      <button class="btn ${listening?'pri':''}" id="mlisten">${listening ? 'Press a button on your controller…' : 'Set trigger'}</button>
+      <label class="mtog"><input type="checkbox" id="mrep" ${m.repeat?'checked':''}> Repeat while held</label>
+      <label class="mtog"><input type="checkbox" id="mblk" ${m.block!==false?'checked':''}> Turn off the button's normal action</label>
+    </div>
+    <div class="row"><b>Steps</b><span class="muted small">${steps.length} steps · ${Math.round(total)} ms total</span><div class="spacer"></div>
+      <button class="btn ${recording?'rec':''}" id="mrec">${recording ? '■ Stop recording' : '● Record from controller'}</button>
+      <button class="btn" id="mplay" ${steps.length?'':'disabled'}>▶ Preview</button></div>
+    ${recording ? `<div class="note info" style="margin:6px 0 10px">Recording… play your combo on the controller now. Timing is captured too. Press <b>Stop recording</b> when you're done.</div>` : ''}
+    <div class="steps" id="msteps">${steps.map((s, i) => `<div class="step ${i===mStep?'sel':''} ${s.btns.length?'':'wait'}" data-si="${i}">
+        <span class="n">${i+1}</span><div class="chips2">${s.btns.length ? s.btns.map(t => `<i>${esc(tokLabel(t))}</i>`).join('') : '<i class="w">Wait</i>'}</div>
+        <span class="ms">${Math.round(s.ms)} ms</span><div class="dur" style="width:${Math.min(100, 8 + s.ms/4)}%"></div></div>`).join('')}
+      <button class="step add" id="madd">+ Press</button><button class="step add" id="mwait">+ Wait</button></div>
+    <div id="mstepedit"></div>
+    <details class="adv" style="margin-top:14px"><summary>Edit as text</summary>
+      <textarea id="mtext" spellcheck="false">${esc(m.steps)}</textarea>
+      <div class="muted small">Format: <span class="mono">BUTTONS ms; wait ms</span>, e.g. <span class="mono">A+RT 50; wait 30; KEY:R 40; MOUSE_L 30</span></div></details>`;
+  $('#mname').onchange = e => { m.name = e.target.value.trim() || ('Macro ' + (mSel+1)); save(); };
+  $('#mdel').onclick = () => { if (confirm(`Delete "${m.name || 'this macro'}"?`)) { P.macros.splice(mSel, 1); mStep = null; save(); } };
+  $('#mlisten').onclick = () => { mListen = listening ? null : mSel; mListen != null && (mListenBase = pressedSources()); renderMacroEditor(); };
+  $('#mrep').onchange = e => { m.repeat = e.target.checked; save(false); };
+  $('#mblk').onchange = e => { m.block = e.target.checked; save(false); };
+  $('#mrec').onclick = () => recording ? stopRec(true) : startRec();
+  $('#mplay').onclick = () => previewMacro(steps);
+  $('#madd').onclick = () => { steps.push({btns: ['A'], ms: 50}); mStep = steps.length - 1; setSteps(steps); };
+  $('#mwait').onclick = () => { steps.push({btns: [], ms: 50}); mStep = steps.length - 1; setSteps(steps); };
+  $$('#msteps .step[data-si]').forEach(el => el.onclick = () => { mStep = +el.dataset.si === mStep ? null : +el.dataset.si; renderMacroEditor(); });
+  $('#mtext').onchange = e => { m.steps = e.target.value; mStep = null; save(); };
+  renderStepEdit(steps);
+}
+
+function renderStepEdit(steps){
+  const host = $('#mstepedit'), s = steps[mStep];
+  if (mStep == null || !s) { host.innerHTML = steps.length ? '<div class="muted small" style="margin-top:8px">Click a step to change it.</div>' : ''; return; }
+  const on = t => s.btns.includes(t) ? 'on' : '';
+  const keys = s.btns.filter(t => t.startsWith('KEY:'));
+  host.innerHTML = `<div class="stepedit">
+    <div class="row" style="margin-top:0"><b>Step ${mStep+1}</b><span class="muted small">${s.btns.length ? 'pressed together' : 'pause'}</span><div class="spacer"></div>
+      <button class="btn" data-sa="left" ${mStep?'':'disabled'}>◀</button><button class="btn" data-sa="right" ${mStep<steps.length-1?'':'disabled'}>▶</button>
+      <button class="btn" data-sa="dup">Duplicate</button><button class="btn" data-sa="del">Delete</button></div>
+    <div class="row"><label>Hold for</label><input type="range" min="10" max="1000" step="5" id="mms" value="${Math.min(1000, s.ms)}"><input type="number" class="num" id="mmsn" min="1" max="10000" value="${Math.round(s.ms)}"><span class="muted small">ms</span></div>
+    <div class="muted small" style="margin:10px 0 6px">Tap buttons to add or remove them from this step (none = a wait):</div>
+    <div class="pick">${MCTRL.map(t => `<button data-tk="${t}" class="${on(t)}">${esc(padName(t))}</button>`).join('')}</div>
+    <div class="pick" style="margin-top:6px">${Object.entries(MMOUSE).map(([t, l]) => `<button data-tk="${t}" class="${on(t)}">🖱 ${l}</button>`).join('')}
+      ${keys.map(t => `<button data-tk="${t}" class="on">${esc(tokLabel(t))} ✕</button>`).join('')}
+      <select id="mcombo"><option value="">+ Shortcut…</option>${SHORTCUTS.map(([v, l]) => `<option value="${v}">${esc(l)}</option>`).join('')}<option value="__combo__">Custom combo…</option></select>
+      <select id="mkey"><option value="">+ Keyboard key…</option>${KEYNAMES.map(k => `<option value="KEY:${k}">${esc(KEYLABEL[k] || k)}</option>`).join('')}${Object.entries(MMEDIA).map(([k, l]) => `<option value="KEY:${k}">${l}</option>`).join('')}</select></div></div>`;
+  const commit = () => setSteps(steps);
+  $$('[data-tk]', host).forEach(b => b.onclick = () => { const t = b.dataset.tk; s.btns = s.btns.includes(t) ? s.btns.filter(x => x !== t) : [...s.btns, t]; commit(); });
+  const addCombo = v => { v.slice(5).split('+').forEach(k => { const t = 'KEY:' + k; if (!s.btns.includes(t)) s.btns.push(t); }); commit(); };
+  $('#mcombo').onchange = e => { const v = e.target.value; if (!v) return; if (v === '__combo__') { e.target.value = ''; openCombo('', addCombo); } else addCombo(v); };
+  $('#mkey').onchange = e => { if (e.target.value && !s.btns.includes(e.target.value)) { s.btns.push(e.target.value); commit(); } };
+  $('#mms').oninput = e => { s.ms = +e.target.value; $('#mmsn').value = s.ms; const blk = $(`#msteps .step[data-si="${mStep}"] .ms`); if (blk) blk.textContent = s.ms + ' ms'; setSteps(steps, false); };
+  $('#mms').onchange = () => renderMacroEditor();
+  $('#mmsn').onchange = e => { s.ms = Math.max(1, Math.min(10000, +e.target.value || 50)); commit(); };
+  $$('[data-sa]', host).forEach(b => b.onclick = () => {
+    const a = b.dataset.sa;
+    if (a === 'del') { steps.splice(mStep, 1); mStep = steps.length ? Math.min(mStep, steps.length - 1) : null; }
+    if (a === 'dup') { steps.splice(mStep + 1, 0, {btns: [...s.btns], ms: s.ms}); mStep++; }
+    if (a === 'left' && mStep > 0) { [steps[mStep-1], steps[mStep]] = [steps[mStep], steps[mStep-1]]; mStep--; }
+    if (a === 'right' && mStep < steps.length - 1) { [steps[mStep+1], steps[mStep]] = [steps[mStep], steps[mStep+1]]; mStep++; }
+    commit();
+  });
+}
+
+/* --- live: set trigger by pressing, and recording --- */
+let mListenBase = new Set();
+function pressedSources(){
+  const b = S.btn || {}, out = new Set();
+  Object.keys(b).forEach(k => { if (b[k]) out.add(k); });
+  if ((S.l2v || 0) > 60) out.add('l2'); if ((S.r2v || 0) > 60) out.add('r2');
+  return out;
+}
+function pressedTargets(){
+  const out = new Set();
+  pressedSources().forEach(src => { const t = P.map[src]; if (t && t !== 'NONE' && !t.startsWith('WHEEL')) out.add(t); });
+  return [...out].sort();
+}
+function startRec(){ mRec = {idx: mSel, segs: [], cur: [], t: null}; mStep = null; renderMacroEditor(); }
+function stopRec(commit){
+  if (!mRec) return;
+  const r = mRec; mRec = null;
+  if (!commit) return;
+  if (r.t != null) r.segs.push({btns: r.cur, ms: performance.now() - r.t});
+  let segs = r.segs.filter(s => s.ms >= 8);
+  while (segs.length && !segs[0].btns.length) segs.shift();
+  while (segs.length && !segs[segs.length-1].btns.length) segs.pop();
+  const merged = [];
+  segs.forEach(s => { s.ms = Math.max(10, Math.round(s.ms / 5) * 5);
+    const last = merged[merged.length-1];
+    if (last && last.btns.join() === s.btns.join()) last.ms += s.ms; else merged.push({btns: [...s.btns], ms: s.ms}); });
+  if (!merged.length) { toast('Nothing recorded. Press Record, then press buttons on the controller'); renderMacroEditor(); return; }
+  P.macros[r.idx].steps = stepsText(merged.slice(0, 64)); mSel = r.idx; save(); toast(`Recorded ${merged.length} steps`);
+}
+function macroLive(){
+  if (mListen != null && P.macros[mListen]) {
+    const now = pressedSources(), fresh = [...now].filter(x => !mListenBase.has(x));
+    mListenBase = new Set([...mListenBase].filter(x => now.has(x)));
+    if (fresh.length) { P.macros[mListen].trigger = fresh[0]; mListen = null; save(); toast('Trigger set: ' + (NAMES[fresh[0]] || fresh[0])); }
+  }
+  if (mRec) {
+    const cur = pressedTargets(), t = performance.now();
+    if (mRec.t == null) { if (cur.length) { mRec.t = t; mRec.cur = cur; } return; }
+    if (cur.join() !== mRec.cur.join()) { mRec.segs.push({btns: mRec.cur, ms: t - mRec.t}); mRec.cur = cur; mRec.t = t; }
+  }
+}
+function previewMacro(steps){
+  clearTimeout(mPlay); let i = 0;
+  const tick = () => {
+    $$('#msteps .step[data-si]').forEach(el => el.classList.toggle('play', +el.dataset.si === i));
+    if (i >= steps.length) return;
+    mPlay = setTimeout(() => { i++; tick(); }, Math.max(steps[i].ms, 120));
+  };
+  tick();
+}
+
+/* ---------------- response curve editor (drag the dots) ---------------- */
+const CUR = {linear:1, smooth:1.4, precise:1.9, aggressive:.65, instant:.4};
+const PRESETS = [
+  ['linear', 'Default', 'Default: the game gets exactly what your thumb does.'],
+  ['aggressive', 'Quick', 'Quick: reacts fast as soon as you move off center. Good for fast shooters.'],
+  ['instant', 'Instant', 'Instant: hits high speed almost straight away.'],
+  ['smooth', 'Smooth', 'Smooth: a bit slower near the center for steadier aim.'],
+  ['precise', 'Slow', 'Slow: very gentle near the center for precise long-range aim and racing.'],
+  ['custom', 'Custom', 'Custom: your own shape, with as many points as you want.'],
+];
+/* Custom curve model, identical to the engine: any number of points, movable ends, optional smooth line. */
+const MAX_POINTS = 32;
+function curveModel(c){
+  const pts = (c.points || []).filter(p => p[0] > 0 && p[0] < 1).map(p => [p[0], Math.min(1, Math.max(0, p[1]))]);
+  const full = [[0, c.y0 ?? 0], ...pts, [1, c.y1 ?? 1]].sort((a, b) => a[0] - b[0]);
+  const xs = full.map(p => p[0]), ys = full.map(p => p[1]); let sl = null;
+  if (c.smooth && xs.length > 2) { const n = xs.length, d = [];
+    for (let k = 0; k < n-1; k++) d.push((ys[k+1]-ys[k]) / Math.max(1e-9, xs[k+1]-xs[k]));
+    const s = [d[0]]; for (let k = 1; k < n-1; k++) s.push(d[k-1]*d[k] <= 0 ? 0 : (d[k-1]+d[k])/2); s.push(d[n-2]);
+    for (let k = 0; k < n-1; k++) { if (d[k] === 0) { s[k] = s[k+1] = 0; continue; } const a = s[k]/d[k], b = s[k+1]/d[k], h = a*a + b*b;
+      if (h > 9) { const t = 3/Math.sqrt(h); s[k] = t*a*d[k]; s[k+1] = t*b*d[k]; } }
+    sl = s; }
+  return {xs, ys, sl};
+}
+function curveJS(n, c){
+  if (c.curve !== 'custom') return n ** (CUR[c.curve] || 1);
+  const {xs, ys, sl} = curveModel(c);
+  for (let k = 1; k < xs.length; k++) if (n <= xs[k]) {
+    const x0 = xs[k-1], x1 = xs[k], y0 = ys[k-1], y1 = ys[k], h = x1 - x0; if (h <= 0) return y1;
+    const t = (n - x0)/h; if (!sl) return y0 + (y1-y0)*t;
+    const t2 = t*t, t3 = t2*t;
+    return Math.min(1, Math.max(0, (2*t3-3*t2+1)*y0 + (t3-2*t2+t)*h*sl[k-1] + (-2*t3+3*t2)*y1 + (t3-t2)*h*sl[k])); }
+  return ys[ys.length-1];
+}
+function toCustom(c){ // turn the current preset into editable points
+  if (c.curve === 'custom') return;
+  c.points = [.25, .5, .75].map(x => [x, +curveJS(x, c).toFixed(3)]); c.y0 = 0; c.y1 = 1; c.curve = 'custom';
+}
+
+function makeCurveEditor(cv, getCfg, kind, getLive){
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height, L = 58, R = 18, T = 18, B = 46;
+  const pw = W - L - R, ph = H - T - B;
+  const X = v => L + v*pw, Y = v => T + (1-v)*ph;
+  const range = c => kind === 'stick' ? [c.shape === 'axial' ? c.inner_x : c.inner, Math.max(c.outer, (c.shape === 'axial' ? c.inner_x : c.inner) + .01)] : [c.start, Math.max(c.end, c.start + .01)];
+  const sens = c => kind === 'stick' ? c.sens : 1;
+  const outAt = (x, c) => { const [lo, hi] = range(c); if (x <= lo) return 0; if (kind === 'trigger' && c.digital) return 1;
+    let n = Math.min(1, (x-lo)/(hi-lo)); n = curveJS(n, c); if (c.anti > 0 && n > 0) n = c.anti + (1-c.anti)*n; return Math.min(1, n*sens(c)); };
+  const toGraph = (c, px, py) => { const [lo, hi] = range(c); return [lo + px*(hi-lo), Math.min(1, (c.anti + (1-c.anti)*py) * sens(c))]; };
+  const fromGraph = (c, gx, gy) => { const [lo, hi] = range(c); return [(gx - lo)/(hi-lo), (gy / sens(c) - c.anti)/((1 - c.anti) || 1)]; };
+  // handles: id -1 = start, -2 = end, i = points[i]
+  const handles = c => { if (c.curve !== 'custom') return [.25,.5,.75].map((x, i) => ({id: i, p: toGraph(c, x, curveJS(x, c))}));
+    return [{id: -1, p: toGraph(c, 0, c.y0 ?? 0)}, ...(c.points || []).map((p, i) => ({id: i, p: toGraph(c, p[0], p[1])})), {id: -2, p: toGraph(c, 1, c.y1 ?? 1)}]; };
+  let drag = null, sel = null, hover = null;
+
+  const bar = document.createElement('div');
+  bar.className = 'curvebar';
+  bar.innerHTML = `<div class="row" style="margin:10px 0 4px;flex-wrap:wrap">
+      <span class="muted small">Smooth line</span><label class="tog"><input type="checkbox" data-cb="smooth"><span></span></label>
+      <button class="btn" data-cb="add">+ Add point</button><button class="btn" data-cb="del" disabled>Delete point</button>
+      <button class="btn" data-cb="reset">Reset</button><div class="spacer"></div><span class="muted small" data-cb="count"></span></div>
+    <div class="row pointedit" style="margin:4px 0;display:none"><span class="small" style="font-weight:600" data-cb="which">Point</span>
+      <span class="small muted">push</span><input type="number" min="0" max="100" step="0.5" data-cb="px" class="num"><span class="muted small">%</span>
+      <span class="muted small">→ game gets</span><input type="number" min="0" max="100" step="0.5" data-cb="py" class="num"><span class="muted small">%</span></div>
+    <div class="muted small">Click empty space on the graph to add a point. Drag points anywhere. Right-click or double-click a point to delete it. The square end points move up and down.</div>`;
+  cv.parentNode.after(bar);
+  const q = k => bar.querySelector(`[data-cb="${k}"]`);
+  const commit = () => { save(false); renderChips(); };
+  q('smooth').onchange = e => { const c = getCfg(); toCustom(c); c.smooth = e.target.checked; commit(); };
+  q('reset').onclick = () => { const c = getCfg(); c.curve = 'linear'; c.points = [[.25,.25],[.5,.5],[.75,.75]]; c.y0 = 0; c.y1 = 1; c.smooth = false; sel = null; commit(); };
+  q('add').onclick = () => { const c = getCfg(); toCustom(c); if (c.points.length >= MAX_POINTS) return toast(`Max ${MAX_POINTS} points`);
+    const xs = [0, ...c.points.map(p => p[0]).sort((a, b) => a - b), 1]; let gi = 0;
+    for (let i = 1; i < xs.length - 1; i++) if (xs[i+1] - xs[i] > xs[gi+1] - xs[gi]) gi = i;
+    const x = +((xs[gi] + xs[gi+1]) / 2).toFixed(3); c.points.push([x, +curveJS(x, c).toFixed(3)]); c.points.sort((a, b) => a[0] - b[0]);
+    sel = c.points.findIndex(p => p[0] === x); commit(); };
+  q('del').onclick = () => { const c = getCfg(); if (sel == null || sel < 0) return; c.points.splice(sel, 1); sel = null; commit(); };
+  const setNum = () => { const c = getCfg(); if (sel == null) return;
+    const vx = Math.min(100, Math.max(0, +q('px').value || 0)) / 100, vy = Math.min(100, Math.max(0, +q('py').value || 0)) / 100;
+    if (sel === -1) c.y0 = vy; else if (sel === -2) c.y1 = vy;
+    else { const pts = c.points, lo = sel ? pts[sel-1][0] + .005 : .005, hi = sel < pts.length-1 ? pts[sel+1][0] - .005 : .995; pts[sel] = [Math.min(hi, Math.max(lo, vx)), vy]; }
+    save(false); };
+  q('px').onchange = setNum; q('py').onchange = setNum;
+  function syncBar(){
+    const c = getCfg(), custom = c.curve === 'custom', n = (c.points || []).length;
+    q('smooth').checked = custom && !!c.smooth;
+    q('count').textContent = custom ? `${n} point${n === 1 ? '' : 's'} + 2 ends (max ${MAX_POINTS})` : 'Preset. Drag or add a point to customise it';
+    if (!custom) sel = null;
+    if (sel != null && sel >= n) sel = null;
+    q('del').disabled = !(custom && sel != null && sel >= 0);
+    const pe = bar.querySelector('.pointedit'); pe.style.display = custom && sel != null ? '' : 'none';
+    if (custom && sel != null) {
+      const p = sel === -1 ? [0, c.y0 ?? 0] : sel === -2 ? [1, c.y1 ?? 1] : c.points[sel];
+      q('which').textContent = sel === -1 ? 'Start point' : sel === -2 ? 'End point' : `Point ${sel + 1}`;
+      q('px').disabled = sel < 0;
+      if (document.activeElement !== q('px')) q('px').value = +(p[0]*100).toFixed(1);
+      if (document.activeElement !== q('py')) q('py').value = +(p[1]*100).toFixed(1);
+    }
+  }
+
+  const toLocal = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * W / r.width, (e.clientY - r.top) * H / r.height]; };
+  const nearest = (c, mx, my) => { let best = null, bd = 1e9; handles(c).forEach(h => { const d = Math.hypot(X(h.p[0]) - mx, Y(h.p[1]) - my); if (d < bd) { bd = d; best = h; } }); return bd < 26 ? best : null; };
+  const removeAt = e => { e.preventDefault(); const c = getCfg(); if (c.curve !== 'custom') return; const [mx, my] = toLocal(e), h = nearest(c, mx, my);
+    if (h && h.id >= 0) { c.points.splice(h.id, 1); sel = null; drag = null; commit(); } };
+  cv.addEventListener('contextmenu', removeAt);
+  cv.addEventListener('dblclick', removeAt);
+  cv.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return; const c = getCfg(); if (kind === 'trigger' && c.digital) return;
+    const [mx, my] = toLocal(e); let h = nearest(c, mx, my);
+    if (h) toCustom(c);
+    else {
+      if (mx < L || mx > L + pw || my < T || my > T + ph) return;
+      toCustom(c); if (c.points.length >= MAX_POINTS) return toast(`Max ${MAX_POINTS} points`);
+      const [px, py] = fromGraph(c, (mx - L)/pw, 1 - (my - T)/ph); if (px <= .005 || px >= .995) return;
+      const x = +px.toFixed(3); c.points.push([x, +Math.min(1, Math.max(0, py)).toFixed(3)]); c.points.sort((a, b) => a[0] - b[0]);
+      h = {id: c.points.findIndex(p => p[0] === x)}; }
+    drag = sel = h.id; cv.setPointerCapture(e.pointerId); commit(); });
+  cv.addEventListener('pointermove', e => {
+    const c = getCfg(), [mx, my] = toLocal(e);
+    if (drag == null) { const h = nearest(c, mx, my); hover = h ? h.id : null; cv.style.cursor = h ? 'grab' : 'crosshair'; return; }
+    cv.style.cursor = 'grabbing';
+    let [px, py] = fromGraph(c, (mx - L)/pw, 1 - (my - T)/ph); py = Math.min(1, Math.max(0, py));
+    if (drag === -1) c.y0 = +py.toFixed(3);
+    else if (drag === -2) c.y1 = +py.toFixed(3);
+    else { const pts = c.points, lo = drag ? pts[drag-1][0] + .01 : .01, hi = drag < pts.length-1 ? pts[drag+1][0] - .01 : .99;
+      pts[drag] = [+Math.min(hi, Math.max(lo, px)).toFixed(3), +py.toFixed(3)]; }
+    save(false); syncBar(); });
+  cv.addEventListener('pointerup', () => { drag = null; cv.style.cursor = 'crosshair'; });
+
+  return { sync: syncBar, draw(){
+    const c = getCfg(); if (!c) return; const [lo, hi] = range(c), col = P.color;
+    g.clearRect(0, 0, W, H);
+    g.fillStyle = '#ff2a3d14'; g.fillRect(X(0), T, X(lo)-X(0), ph); g.fillRect(X(hi), T, X(1)-X(hi), ph);
+    g.strokeStyle = '#24242e'; g.lineWidth = 1;
+    for (let i = 0; i <= 10; i++) { g.beginPath(); g.moveTo(X(i/10), T); g.lineTo(X(i/10), T+ph); g.stroke(); g.beginPath(); g.moveTo(L, Y(i/10)); g.lineTo(L+pw, Y(i/10)); g.stroke(); }
+    g.strokeStyle = '#3a3a48'; g.setLineDash([6, 6]); g.beginPath(); g.moveTo(X(0), Y(0)); g.lineTo(X(1), Y(1)); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#8b8a99'; g.font = '18px Segoe UI';
+    if (X(lo) - X(0) > 70) g.fillText('dead zone', X(0) + 8, T + 24);
+    if (X(1) - X(hi) > 50) g.fillText('max', X(hi) + 6, T + 24);
+    g.fillText(kind === 'stick' ? 'how far you push →' : 'how hard you press →', L + pw - 190, H - 12);
+    g.save(); g.translate(22, T + ph); g.rotate(-Math.PI/2); g.fillText('what the game gets →', 0, 0); g.restore();
+    g.fillText('0%', L - 6, H - 26); g.fillText('100%', L + pw - 40, H - 26);
+    g.strokeStyle = col; g.lineWidth = 5; g.shadowColor = col; g.shadowBlur = 14; g.lineJoin = 'round'; g.beginPath();
+    for (let i = 0; i <= 400; i++) { const x = i/400, y = outAt(x, c); i ? g.lineTo(X(x), Y(y)) : g.moveTo(X(x), Y(y)); }
+    g.stroke(); g.shadowBlur = 0;
+    if (!(kind === 'trigger' && c.digital)) handles(c).forEach(h => {
+      const big = drag === h.id || hover === h.id, isSel = c.curve === 'custom' && sel === h.id, r = big ? 12 : 9;
+      g.fillStyle = isSel ? col : '#fff'; g.strokeStyle = isSel ? '#fff' : col; g.lineWidth = 4; g.beginPath();
+      if (h.id < 0) g.rect(X(h.p[0]) - r, Y(h.p[1]) - r, r*2, r*2); else g.arc(X(h.p[0]), Y(h.p[1]), r, 0, 7);
+      g.fill(); g.stroke(); });
+    const lv = getLive ? getLive() : null;
+    if (lv != null && S.connected) { const ly = outAt(lv, c);
+      g.strokeStyle = '#ffffff40'; g.lineWidth = 1.5; g.setLineDash([4, 4]); g.beginPath(); g.moveTo(X(lv), Y(0)); g.lineTo(X(lv), Y(ly)); g.lineTo(X(0), Y(ly)); g.stroke(); g.setLineDash([]);
+      g.fillStyle = col; g.beginPath(); g.arc(X(lv), Y(ly), 8, 0, 7); g.fill(); }
+  }};
+}
+let stickEd = null; const trigEd = {};
+function stickLive(){
+  if (!S.connected) return null; const isL = (side === 'left') !== !!P.swap_sticks;
+  const n = v => (v-127.5)/127.5, ce = (S.centers && S.centers[isL ? 'left' : 'right']) || [0,0];
+  const x = n(isL ? S.lx : S.rx) - ce[0], y = -n(isL ? S.ly : S.ry) - ce[1];
+  return Math.min(1, Math.hypot(x, y));
+}
+function renderChips(){
+  const host = $('#stickcurves'), c = P.sticks[side];
+  host.innerHTML = PRESETS.map(([k, nm]) => `<button data-c="${k}" class="${c.curve===k?'on':''}">${nm}</button>`).join('');
+  $$('button', host).forEach(b => b.onclick = () => { c.curve = b.dataset.c; if (b.dataset.c === 'custom') { c.points = c.points || [[.25,.25],[.5,.5],[.75,.75]]; c.y0 = c.y0 ?? 0; c.y1 = c.y1 ?? 1; } save(); });
+  $('#curvedesc').textContent = (PRESETS.find(p => p[0] === c.curve) || PRESETS[0])[2];
+  stickEd && stickEd.sync(); trigEd.left && trigEd.left.sync(); trigEd.right && trigEd.right.sync();
+  ['left','right'].forEach(t => { const h = $(`#tchips-${t}`); if (!h) return; const tc = P.triggers[t];
+    h.innerHTML = PRESETS.filter(p => p[0] !== 'instant').map(([k, nm]) => `<button data-c="${k}" class="${tc.curve===k?'on':''}">${nm}</button>`).join('');
+    $$('button', h).forEach(b => b.onclick = () => { tc.curve = b.dataset.c; if (b.dataset.c === 'custom' && !tc.points) tc.points = [[.25,.25],[.5,.5],[.75,.75]]; save(); }); });
+}
+function setSide(s){ side = s; $$('#stickside button').forEach(x => x.classList.toggle('on', x.dataset.s === s)); renderAll(); }
+function drawStick(cv, x, y, opts = {}){
+  const g = cv.getContext('2d'), W = cv.width, R = W/2 - 16, cx = W/2, cy = W/2;
+  g.clearRect(0,0,W,W);
+  g.strokeStyle = '#2a2a36'; g.lineWidth = 2; g.beginPath(); g.arc(cx,cy,R,0,7); g.stroke();
+  g.beginPath(); g.moveTo(cx-R,cy); g.lineTo(cx+R,cy); g.moveTo(cx,cy-R); g.lineTo(cx,cy+R); g.stroke();
+  if (opts.cfg) { const c = opts.cfg; g.fillStyle = '#ff2a3d18'; g.strokeStyle = '#ff2a3d66';
+    if (c.shape !== 'axial') { g.beginPath(); g.arc(cx,cy,R*c.inner,0,7); g.fill(); g.stroke(); }
+    if (c.shape !== 'radial') { const k = c.shape==='hybrid'?.5:1; g.fillRect(cx-R*c.inner_x*k, cy-R, 2*R*c.inner_x*k, 2*R); g.fillRect(cx-R, cy-R*c.inner_y*k, 2*R, 2*R*c.inner_y*k); }
+    g.setLineDash([8,8]); g.beginPath(); g.arc(cx,cy,R*c.outer,0,7); g.stroke(); g.setLineDash([]); }
+  if (opts.trail) { g.fillStyle = '#ffffff10'; opts.trail.forEach(p => { g.beginPath(); g.arc(cx+p[0]*R, cy-p[1]*R, 3, 0, 7); g.fill(); }); }
+  g.fillStyle = '#8b8a99'; g.beginPath(); g.arc(cx + x*R, cy - y*R, opts.out ? 9 : 14, 0, 7); g.fill();
+  if (opts.out) { g.fillStyle = P.color; g.shadowColor = P.color; g.shadowBlur = 16; g.beginPath(); g.arc(cx + opts.out[0]*R, cy - opts.out[1]*R, 13, 0, 7); g.fill(); g.shadowBlur = 0; }
+}
+const gyroHist = [];
+function drawGyro(){
+  const cv = $('#gyrocv'), g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.clearRect(0,0,W,H); g.strokeStyle = '#262632'; g.beginPath(); g.moveTo(0,H/2); g.lineTo(W,H/2); g.stroke();
+  ['#ff2a3d','#2fd27a','#2a8bff'].forEach((col, a) => { g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath();
+    gyroHist.forEach((v, i) => { const x = i/(gyroHist.length-1||1)*W, y = H/2 - Math.max(-1,Math.min(1,v[a]/4000))*H/2.2; i ? g.lineTo(x,y) : g.moveTo(x,y); }); g.stroke(); });
+}
+function drawTouch(){
+  const cv = $('#touchcv'), g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.clearRect(0,0,W,H); g.strokeStyle = '#2a2a36'; g.lineWidth = 2; g.strokeRect(2,2,W-4,H-4); g.beginPath(); g.moveTo(W/2,0); g.lineTo(W/2,H); g.stroke();
+  (S.touches||[]).forEach((t, i) => { g.fillStyle = i ? '#2a8bff' : P.color; g.beginPath(); g.arc(t[0]/1920*W, t[1]/942*H, 16, 0, 7); g.fill(); });
+  if (S.btn && S.btn.touch) { g.fillStyle = '#ff2a3d22'; g.fillRect(0,0,W,H); }
+}
+
+function drawPoll(){
+  const p = S.poll || {recent: []}, cv = $('#pollcv'), g = cv.getContext('2d'), W = cv.width, H = cv.height, L = 52;
+  $('#pl-hz').textContent = S.rate + ' Hz'; $('#pl-avg').textContent = p.avg ? (p.avg/1000).toFixed(2) + ' ms' : '-';
+  $('#pl-mm').textContent = p.avg ? (p.min/1000).toFixed(2) + ' / ' + (p.max/1000).toFixed(2) : '-';
+  $('#pl-jit').textContent = p.avg ? '±' + (p.jitter/1000).toFixed(3) + ' ms' : '-';
+  g.clearRect(0, 0, W, H);
+  const top = Math.max(5000, ...(p.recent || [0])) * 1.1, Y = v => H - 20 - v/top*(H - 30);
+  g.fillStyle = '#8b8a99'; g.font = '15px Segoe UI'; g.strokeStyle = '#24242e';
+  for (const ms of [1, 2, 4, 8]) { if (ms*1000 > top) continue; g.beginPath(); g.moveTo(L, Y(ms*1000)); g.lineTo(W, Y(ms*1000)); g.stroke(); g.fillText(ms + ' ms', 4, Y(ms*1000) + 5); }
+  const r = p.recent || [], bw = (W - L) / Math.max(1, r.length);
+  r.forEach((v, i) => { g.fillStyle = v > (p.avg || 4000) * 1.5 ? '#ffb020' : P.color; g.fillRect(L + i*bw, Y(v), Math.max(1, bw - 1), H - 20 - Y(v)); });
+  g.fillText('1000 Hz = 1 ms bars · 250 Hz = 4 ms bars', L, H - 3);
+}
+
+/* ---------------- live loop ---------------- */
+const trailL = [], trailR = [];
+let lastFrame = 0;
+async function tick(ts){
+  try { S = await api.get_state(); } catch(e) {}
+  liveUpdate();
+  requestAnimationFrame(tick);
+}
+function liveUpdate(){
+  const c = S.connected;
+  $('#cdot').className = 'dot ' + (c ? 'ok' : 'bad');
+  $('#ctext').textContent = c ? `${S.kind ? S.kind + ' · ' : ''}${S.conn} · ${S.name || 'Controller'}` : S.released ? 'Released to Windows' : 'No controller found';
+  $('#releasedbar').classList.toggle('on', !!S.released);
+  $('#hz').textContent = c ? S.rate : 0;
+  const bat = c && S.battery != null ? S.battery : null;
+  $('#bat').textContent = bat == null ? '--' : bat + '%' + (S.charging ? ' ⚡' : '');
+  $('#batfill').setAttribute('width', bat == null ? 0 : 12*bat/100);
+  $('#batfill').setAttribute('fill', bat != null && bat < 25 ? 'var(--accent)' : 'var(--ok)');
+  $('#maptog').classList.toggle('on', !!S.mapping); $('#mapdot').className = 'dot ' + (S.mapping ? 'ok' : '');
+  $('#maptext').textContent = S.mapping ? `Remapping ON · ${S.pad === 'ps' ? 'PlayStation' : S.pad === 'xbox' ? 'Xbox' : 'keys & mouse'}` : 'Remapping off';
+  if (S.current && INIT && S.current !== INIT.current) { refreshInit(); }
+  updatePads();
+  const page = ($('.page.on') || {}).id;
+  if (page === 'p-home') {
+    $('#h-conn').textContent = c ? S.conn : 'None'; $('#h-name').textContent = c ? (S.name || '') : 'Plug in over USB or pair over Bluetooth';
+    $('#h-hz').textContent = c ? S.rate : 0; $('#h-hzsub').textContent = c ? (S.rate >= 900 && S.conn === 'USB' ? 'max for this controller (full-speed USB)' : `one report every ${(1000/Math.max(1,S.rate)).toFixed(1)} ms`) : '';
+    $('#h-lat').textContent = c ? (S.proc_us/1000).toFixed(3) : '0';
+    $('#h-bat').textContent = bat == null ? '—' : bat + '%'; $('#h-chg').textContent = c ? (S.charging ? 'Charging / cable' : 'On battery') : '';
+  }
+  if (page === 'p-macros') macroLive();
+  if (page === 'p-sticks' && stickEd) stickEd.draw();
+  if (page === 'p-triggers' && !c) { trigEd.left && trigEd.left.draw(); trigEd.right && trigEd.right.draw(); }
+  if (!c) return;
+  if (page === 'p-sticks') {
+    const isL = side === 'left', sw = P.swap_sticks;
+    const rx = (isL !== sw ? S.lx : S.rx), ry = (isL !== sw ? S.ly : S.ry);
+    const x = (rx-127.5)/127.5, y = -(ry-127.5)/127.5, o = S.out || {};
+    const out = isL ? [o.lx||0, o.ly||0] : [o.rx||0, o.ry||0];
+    const tr = isL ? trailL : trailR; tr.push(out); if (tr.length > 60) tr.shift();
+    drawStick($('#stickcv'), x, y, {cfg: P.sticks[side], out, trail: tr});
+    $('#st-raw').textContent = `${x.toFixed(3)}, ${y.toFixed(3)}`; $('#st-out').textContent = `${out[0].toFixed(3)}, ${out[1].toFixed(3)}`;
+    const ce = S.centers ? S.centers[side] : [0,0];
+    $('#centerinfo').textContent = S.centering ? 'calibrating…' : (ce && (ce[0]||ce[1]) ? `offset ${(+ce[0]).toFixed(3)}, ${(+ce[1]).toFixed(3)}` : 'not calibrated');
+  }
+  if (page === 'p-triggers') { trigEd.left && trigEd.left.draw(); trigEd.right && trigEd.right.draw(); }
+  if (page === 'p-motion') {
+    gyroHist.push(S.gyro || [0,0,0]); if (gyroHist.length > 160) gyroHist.shift(); drawGyro();
+    $('#gyrotxt').textContent = (S.gyro||[]).join(', '); $('#acctxt').textContent = (S.accel||[]).join(', ');
+    $('#gyrocal').textContent = S.calibrating ? 'Calibrating… keep still' : 'Put the controller flat and still first';
+  }
+  if (page === 'p-tester') {
+    $$('#testgrid .tbtn').forEach(el => el.classList.toggle('on', !!S.btn[el.dataset.b]));
+    $('#tl2').style.width = (S.l2v/255*100)+'%'; $('#tr2').style.width = (S.r2v/255*100)+'%'; $('#tl2v').textContent = S.l2v; $('#tr2v').textContent = S.r2v;
+    const n = v => (v-127.5)/127.5;
+    drawStick($('#tlcv'), n(S.lx), -n(S.ly)); drawStick($('#trcv'), n(S.rx), -n(S.ry));
+    $('#tlv').textContent = `L ${S.lx}, ${S.ly}`; $('#trv').textContent = `R ${S.rx}, ${S.ry}`;
+    const dl = Math.hypot(n(S.lx), n(S.ly)), dr = Math.hypot(n(S.rx), n(S.ry));
+    $('#driftmsg').textContent = `At rest: left ${(dl*100).toFixed(1)}% off center, right ${(dr*100).toFixed(1)}%. If either is over ~5% while you aren't touching it, use Drift fix on the Sticks page.`;
+    drawTouch();
+    $('#pf-hz').textContent = S.rate + ' Hz'; $('#pf-avg').textContent = (S.proc_us/1000).toFixed(3) + ' ms'; $('#pf-max').textContent = (S.proc_us_max/1000).toFixed(3) + ' ms';
+    $('#pf-int').textContent = (1000/Math.max(1,S.rate)).toFixed(2) + ' ms';
+    drawPoll();
+  }
+  if (page === 'p-settings') $('#set-hz').textContent = `${S.rate} Hz over ${S.conn}`;
+  if (page === 'p-sticks') {
+    const amt = ((P.sticks.left.shake || 0) > 0) || ((P.sticks.right.shake || 0) > 0), st = $('#shakestat');
+    st.className = 'shakestat ' + (S.shake_ok && amt ? 'on' : 'off');
+    st.textContent = !amt ? 'Shake is off (amount is 0)' : S.shake_ok ? `Shaking now in ${S.fg}` : `Paused: ${S.fg || 'the current app'} isn't on your single-player list`;
+  }
+}
+
+/* ---------------- driver / mapping ---------------- */
+function renderDriver(st){
+  const msg = st === 'ok' ? `<span class="badge ok">Ready</span> <span class="muted small">Virtual Xbox controller driver is installed. Turn on <b>Remapping</b> (top right) to send your profile to games.</span>`
+    : `<span class="badge bad">Setup needed</span><div class="muted small" style="margin:10px 0">To send remapped input to games, Edge Hub needs the free ViGEmBus driver (it creates a virtual Xbox controller). Everything else, like the tester, light bar and vibration, works without it.</div>
+       <button class="btn pri" data-inst>Install driver</button> <span class="muted small">Windows will ask for permission. Restart Edge Hub afterwards.</span>`;
+  $('#driverinfo').innerHTML = msg + `<div class="muted small" style="margin-top:12px">Want to stop using Edge Hub? <a href="#" data-gorestore style="color:var(--accent2)">Restore original setup</a></div>`;
+  $('#driverinfo2').innerHTML = msg;
+  $$('[data-gorestore]').forEach(a => a.onclick = e => { e.preventDefault(); go('settings'); $('#restorecard').scrollIntoView({behavior:'smooth'}); });
+  $$('[data-inst]').forEach(b => b.onclick = async () => { await api.install_driver(); toast('Installer starting…'); });
+}
+async function toggleMapping(){
+  const r = await api.set_mapping(!S.mapping);
+  if (r.mapping && r.error) { toast('Keyboard & mouse on. Xbox output needs the driver (see Settings)'); renderDriver(r.error); }
+  else if (r.error) { toast('Driver needed. Open Settings to install it'); renderDriver(r.error); }
+  else toast(r.mapping ? 'Remapping ON: games now see your profile' : 'Remapping off');
+}
+
+/* ---------------- restore original setup ---------------- */
+let SYS = null;
+function renderSystem(st){
+  SYS = st;
+  if (!st || st.error) { $('#drvsummary').textContent = 'Could not read driver info' + (st && st.error ? ': ' + st.error : ''); return; }
+  const devs = st.devices || [];
+  $('#drvsummary').innerHTML = !devs.length ? '<span class="badge">No controller found</span> Plug it in or pair it to check its drivers.'
+    : st.all_standard ? '<span class="badge ok">All standard</span> Every part of your controller is on the regular Microsoft driver.'
+    : '<span class="badge bad">Modified</span> Some parts aren\'t on the standard driver. Tick "Reinstall the standard driver" to fix this.';
+  const nice = d => ({usbccgp:'USB connection', HidUsb:'Controller input (USB)', HidBth:'Controller input (Bluetooth)', usbaudio:'Headset jack audio'})[d.service] || d.name;
+  $('#drvlist').innerHTML = devs.map(d => `<div class="drv"><span class="badge ${d.standard?'ok':'bad'}">${d.standard?'Standard':'Modified'}</span>
+      <span class="nm">${esc(nice(d))}</span><span class="svc" title="${esc(d.id)}">${esc(d.provider || '?')} · ${esc(d.service || d.inf || 'inbox')}${d.filters.length ? ' · filters: ' + esc(d.filters.join(', ')) : ''}</span></div>`).join('');
+  $('#r-vigem-row').style.display = st.vigem ? '' : 'none';
+  $('#r-hidhide-row').style.display = st.hidhide ? '' : 'none';
+  $('#hidusbfnote').style.display = st.hidusbf ? '' : 'none';
+  if (devs.length && !st.all_standard) $('#r-driver').checked = true;
+}
+async function checkDrivers(){ $('#drvsummary').textContent = 'Checking…'; renderSystem(await api.system_status()); }
+async function doRestore(){
+  const o = {reset_driver: $('#r-driver').checked, uninstall_vigem: SYS && SYS.vigem && $('#r-vigem').checked,
+             uninstall_hidhide: SYS && SYS.hidhide && $('#r-hidhide').checked, delete_settings: $('#r-settings').checked};
+  const steps = ['• Turn off remapping and hand the controller back to Windows'];
+  if (o.reset_driver) steps.push('• Reinstall the controller\'s standard Windows driver (it will disconnect for a few seconds)');
+  if (o.uninstall_vigem) steps.push('• Uninstall ViGEmBus');
+  if (o.uninstall_hidhide) steps.push('• Uninstall HidHide');
+  if (o.delete_settings) steps.push('• Delete all Edge Hub profiles and settings (can\'t be undone)');
+  if (!confirm('Restore original setup?\n\n' + steps.join('\n'))) return;
+  const btn = $('#dorestore'); btn.disabled = true; btn.textContent = 'Restoring…';
+  $('#restorelog').innerHTML = '<div class="logline">Working… if Windows asks for permission, click Yes.</div>';
+  try {
+    const r = await api.restore(o);
+    $('#restorelog').innerHTML = r.log.map(([k, t]) => `<div class="logline ${k}">${esc(t)}</div>`).join('') +
+      (o.delete_settings ? '<div class="logline">You can close Edge Hub now. To use it again later, just open it and it starts fresh.</div>' : '');
+    renderSystem(r.status);
+  } catch (e) { $('#restorelog').innerHTML = `<div class="logline bad">${esc(e.message || e)}</div>`; }
+  btn.disabled = false; btn.textContent = 'Restore original setup';
+}
+
+/* ---------------- profiles ---------------- */
+async function refreshInit(r){ INIT = r && r.profile ? r : await api.get_init(); P = INIT.profile; renderProfiles(); renderMap(); renderAll(); }
+async function selectProfile(n){ await refreshInit(await api.select_profile(n)); toast('Profile: ' + n); }
+
+/* ---------------- boot ---------------- */
+async function boot(){
+  buildNav(); mountPads();
+  INIT = await api.get_init(); P = INIT.profile;
+  const sw = ['#ff2a3d','#ff8a00','#ffd400','#2fd27a','#00c2ff','#2a5bff','#9b5cff','#ff3fb4','#ffffff'];
+  $('#swatches').innerHTML = sw.map(c => `<i data-c="${c}" style="background:${c}"></i>`).join('');
+  $$('#swatches i').forEach(i => i.onclick = () => { P.color = i.dataset.c; save(); renderProfiles(); });
+  $('#lightcol').oninput = e => { P.color = e.target.value; save(); };
+  $('#testgrid').innerHTML = INIT.sources.map(s => `<div class="tbtn" data-b="${s}">${NAMES[s]}</div>`).join('');
+  $$('#stickside button').forEach(b => b.onclick = () => setSide(b.dataset.s));
+  stickEd = makeCurveEditor($('#curvecv'), () => P.sticks[side], 'stick', stickLive);
+  $('#copystick').onclick = () => { P.sticks[side==='left'?'right':'left'] = JSON.parse(JSON.stringify(P.sticks[side])); save(); toast('Copied to the other stick'); };
+  $('#calsticks').onclick = async () => { await api.calibrate_sticks(); toast('Hands off… calibrating'); };
+  $('#clrsticks').onclick = async () => { await api.clear_stick_center(); toast('Center reset'); };
+  $('#calgyro').onclick = async () => { await api.calibrate_gyro(); toast('Calibrating gyro…'); };
+  $$('[data-rum]').forEach(b => b.onclick = () => api.test_rumble(b.dataset.rum));
+  $('#addmacro').onclick = () => { P.macros.push({name:'Macro ' + (P.macros.length+1), trigger:'touch', steps:'', repeat:false, block:true}); mSel = P.macros.length-1; mStep = null; save(); setTimeout(startRec, 0); toast('New macro: press buttons on your controller to record it'); };
+  $('#resetmap').onclick = () => { INIT.sources.forEach(s => P.map[s] = ({cross:'A',circle:'B',square:'X',triangle:'Y',l1:'LB',r1:'RB',l2:'LT',r2:'RT',l3:'LS',r3:'RS',share:'BACK',options:'START',ps:'GUIDE',touch:'BACK',up:'UP',down:'DOWN',left:'LEFT',right:'RIGHT'})[s]); P.turbo = {}; save(); renderMap(); };
+  $('#resetall').onclick = async () => { if (confirm('Reset every setting in this profile?')) { const r = await api.reset_profile(); P = r.profile; renderMap(); renderAll(); } };
+  $('#profsel').onchange = e => selectProfile(e.target.value);
+  $('#newprof').onclick = async () => refreshInit(await api.new_profile(null));
+  $('#dupprof').onclick = async () => refreshInit(await api.new_profile(INIT.current));
+  $('#delprof').onclick = async () => { if (INIT.profiles.length > 1 && confirm(`Delete profile "${INIT.current}"?`)) refreshInit(await api.delete_profile(INIT.current)); };
+  $('#profcards').ondblclick = async e => { const el = e.target.closest('.prof'); if (!el || el.dataset.n !== INIT.current) return; const n = prompt('Rename profile', INIT.current); if (n) { P.name = n; const r = await api.save_profile(P); refreshInit(r); } };
+  $('#maptog').onclick = toggleMapping;
+  $('#autostart').checked = !!(INIT.settings||{}).autostart_mapping; $('#autostart').onchange = e => api.set_setting('autostart_mapping', e.target.checked);
+  $('#btpoll').value = String((INIT.settings||{}).bt_poll_ms || 0); $('#btpoll').onchange = e => { api.set_setting('bt_poll_ms', +e.target.value); toast('Bluetooth poll rate sent'); };
+  $('#ccancel').onclick = closeCombo;
+  $('#combomodal').onclick = e => { if (e.target.id === 'combomodal') closeCombo(); };
+  $('#csave').onclick = () => { const v = comboValue(), d = comboDone; closeCombo(); if (d) { d(v); toast('Button now presses ' + comboLabel(v)); } };
+  $('#datadir').textContent = INIT.data_dir; $('#opendata').onclick = () => api.open_data_dir();
+  $('#chkdrv').onclick = checkDrivers; $('#dorestore').onclick = doRestore;
+  if (window.__EH_NATIVE) {
+    document.body.classList.add('native');
+    $('#tbdrag').addEventListener('mousedown', e => { if (e.button === 0 && e.detail === 1) api.win_drag(); });
+    $('#tbdrag').addEventListener('dblclick', () => api.win_max());
+    $$('[data-w]').forEach(b => b.onclick = () => api['win_' + b.dataset.w]());
+    $$('.rz').forEach(el => el.addEventListener('mousedown', e => { e.preventDefault(); api.win_resize(+el.dataset.rz); }));
+  }
+  $$('[data-goto]').forEach(a => a.onclick = e => { e.preventDefault(); go(a.dataset.goto); });
+  renderDevices(INIT.devices || []); setInterval(() => { if (($('.page.on')||{}).id === 'p-settings') refreshDevices(); }, 3000);
+  renderShakeGames();
+  $('#shakeadd').onclick = () => addShakeGame($('#shakerecent').value);
+  $('#shakeadd2').onclick = () => { addShakeGame($('#shakeexe').value); $('#shakeexe').value = ''; };
+  setInterval(() => { if (($('.page.on')||{}).id === 'p-sticks') refreshRecent(); }, 4000);
+  $('#profrumble').checked = (INIT.settings||{}).profile_rumble !== false; $('#profrumble').onchange = e => api.set_setting('profile_rumble', e.target.checked);
+  $('#lowbat').checked = (INIT.settings||{}).low_battery_warn !== false; $('#lowbat').onchange = e => api.set_setting('low_battery_warn', e.target.checked);
+  $('#autosw').checked = (INIT.settings||{}).auto_switch !== false; $('#autosw').onchange = e => api.set_setting('auto_switch', e.target.checked);
+  $('#addgame').onclick = () => linkGame($('#recentapps').value);
+  $('#addgame2').onclick = () => { linkGame($('#gameexe').value); $('#gameexe').value = ''; };
+  refreshRecent(); setInterval(() => { if (($('.page.on')||{}).id === 'p-home') refreshRecent(); }, 4000);
+  $('#expprof').onclick = async () => { const code = b64e(P); try { await navigator.clipboard.writeText(code); toast('Profile code copied. Paste it to a friend'); } catch(e) { prompt('Copy this profile code:', code); } };
+  $('#impprof').onclick = async () => { const t = prompt('Paste a profile code:'); if (!t) return;
+    try { const r = await api.import_profile(b64d(t)); await refreshInit(r); toast('Profile imported'); } catch(e) { toast('That code is not a valid profile'); } };
+  $('#resumebtn').onclick = async () => { await api.resume(); $('#restorelog').innerHTML = ''; toast('Edge Hub is back on'); };
+  $('#quitbtn').onclick = () => api.quit();
+  checkDrivers();
+  renderDriver(INIT.driver); renderOutPick(); renderProfiles(); renderMap(); renderAll();
+  let start = 'home'; try { start = localStorage.getItem('page') || 'home'; } catch(e) {}
+  go(PAGES.some(p => p[0] === start) ? start : 'home');
+  requestAnimationFrame(tick);
+}
+let booted = false;
+window.addEventListener('pywebviewready', () => { if (booted) return; booted = true; api = window.pywebview.api; boot(); });
+setTimeout(() => { if (!booted && !(window.pywebview && window.pywebview.api)) { booted = true; api = mockApi(); boot(); } }, 1200);
+</script>
+</body>
+</html>

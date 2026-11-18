@@ -1,0 +1,15 @@
+# build output
+target/
+app/.cargo/
+*.exe
+*.zip
+*.pdb
+
+# superseded Python prototype
+old-python/
+
+# editor / OS
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini

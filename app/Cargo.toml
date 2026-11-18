@@ -1,0 +1,29 @@
+[package]
+name = "edgehub"
+version = "2.0.0"
+edition = "2021"
+description = "Edge Hub - controller control center"
+
+[[bin]]
+name = "EdgeHub"
+path = "src/main.rs"
+
+[dependencies]
+wry = "0.57"
+tao = "0.37"
+hidapi = { version = "2.6", default-features = false, features = ["windows-native"] }
+vigem-client = { version = "0.1.4", features = ["unstable_xtarget_notification", "unstable_ds4"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+crc32fast = "1"
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Media", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_XboxController"] }
+
+[build-dependencies]
+embed-resource = "3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
+panic = "abort"
