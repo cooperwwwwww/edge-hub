@@ -568,7 +568,7 @@ pub fn norm(v: u8) -> f64 { ((v as f64 - 127.5) / 127.5).clamp(-1.0, 1.0) }
 
 // ------------------------------------------------------------------ engine
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Out { pub buttons: u16, pub lt: f64, pub rt: f64, pub lx: f64, pub ly: f64, pub rx: f64, pub ry: f64 }
 
 /// Keyboard / mouse side of the output (applied with SendInput by the app).
@@ -764,7 +764,7 @@ impl Engine {
         }
         if guide_tap { wb |= 0x0400; }
 
-        let dt = if self.t_prev > 0.0 { (now - self.t_prev).clamp(0.0002, 0.05) } else { 0.001 };
+        let dt = if self.t_prev > 0.0 { (now - self.t_prev).clamp(0.00005, 0.05) } else { 0.001 };
         self.t_prev = now;
         let (hl, hrr) = if c.swap { (c.right.hires, c.left.hires) } else { (c.left.hires, c.right.hires) };
         let v = s.fx.unwrap_or([norm(s.lx), norm(s.ly), norm(s.rx), norm(s.ry)]);

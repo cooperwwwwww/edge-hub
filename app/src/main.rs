@@ -39,6 +39,20 @@ fn safe_name(n: &str) -> String {
     let k = k.trim().to_string();
     if k.is_empty() { "Profile".into() } else { k }
 }
+/// Small connection log (%APPDATA%\EdgeHub\edgehub.log) so problems can be diagnosed.
+fn elog(msg: &str) {
+    use std::io::Write;
+    let _ = fs::create_dir_all(data_dir());
+    if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(data_dir().join("edgehub.log")) {
+        let t = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
+        let _ = writeln!(f, "[{t}] {msg}");
+    }
+}
+fn rotate_log() {
+    let p = data_dir().join("edgehub.log");
+    if fs::metadata(&p).map(|m| m.len() > 256 * 1024).unwrap_or(false) { let _ = fs::rename(&p, data_dir().join("edgehub.old.log")); }
+}
+
 fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> { m.lock().unwrap_or_else(|e| e.into_inner()) }
 
 // ------------------------------------------------------------------ shared state
@@ -50,7 +64,7 @@ enum Pad {
     X360(vigem_client::Xbox360Wired<vigem_client::Client>),
     Ds4(vigem_client::DualShock4Wired<vigem_client::Client>),
 }
-struct VPad { pad: Pad, notif: Option<thread::JoinHandle<()>> }
+struct VPad { pad: Pad, notif: Option<thread::JoinHandle<()>>, last: Option<(Out, Instant)> }
 
 /// Converts the engine's Xbox-style output into a DualShock 4 report.
 fn to_ds4(o: &Out) -> vigem_client::DS4Report {
@@ -88,8 +102,10 @@ impl VPad {
             let _ = t.update(&vigem_client::DS4Report { thumb_lx: 0x81, ..Default::default() });
             thread::sleep(Duration::from_millis(15));
             let _ = t.update(&vigem_client::DS4Report::default());
-            return Ok(VPad { pad: Pad::Ds4(t), notif: None });
+            elog("virtual PlayStation pad plugged in");
+            return Ok(VPad { pad: Pad::Ds4(t), notif: None, last: None });
         }
+        let before: Vec<u32> = (0..4).filter(|i| xinput_state(*i).is_some()).collect();
         let mut t = vigem_client::Xbox360Wired::new(client, vigem_client::TargetId::XBOX360_WIRED);
         t.plugin().map_err(|e| format!("{e:?}"))?;
         t.wait_ready().map_err(|e| format!("{e:?}"))?;
@@ -97,16 +113,29 @@ impl VPad {
         let _ = t.update(&vigem_client::XGamepad { thumb_lx: 1, ..Default::default() });
         thread::sleep(Duration::from_millis(15));
         let _ = t.update(&vigem_client::XGamepad::default());
-        if let Ok(i) = t.get_user_index() { *lock(&sh.vpad_slot) = Some(i); }
+        // learn which XInput slot is ours so we never read our own output back (Windows can be slow to assign it)
+        let mut slot = None;
+        for _ in 0..40 {
+            if let Ok(i) = t.get_user_index() { slot = Some(i); break; }
+            let fresh: Vec<u32> = (0..4).filter(|i| xinput_state(*i).is_some() && !before.contains(i)).collect();
+            if fresh.len() == 1 { slot = Some(fresh[0]); break; }
+            thread::sleep(Duration::from_millis(25));
+        }
+        *lock(&sh.vpad_slot) = slot;
+        elog(&format!("virtual Xbox pad plugged in, XInput slot {slot:?}"));
         let notif = t.request_notification().ok().map(|req| {
             req.spawn_thread(move |_, n| {
                 *lock(&sh.rumble_game) = (n.large_motor, n.small_motor);
             })
         });
-        Ok(VPad { pad: Pad::X360(t), notif })
+        Ok(VPad { pad: Pad::X360(t), notif, last: None })
     }
     fn is_ps(&self) -> bool { matches!(self.pad, Pad::Ds4(_)) }
     fn send(&mut self, o: &Out) {
+        // skip identical reports (keeps 2-8 kHz controllers cheap); still refresh every 100 ms
+        let now = Instant::now();
+        if let Some((l, t)) = &self.last { if l == o && now.duration_since(*t) < Duration::from_millis(100) { return; } }
+        self.last = Some((*o, now));
         match &mut self.pad {
             Pad::X360(t) => {
                 let c = |v: f64| (v * 32767.0).round().clamp(-32768.0, 32767.0) as i16;
@@ -413,7 +442,7 @@ fn set_mapping(sh: &Arc<Shared>, on: bool) -> Value {
             let ps = lock(&sh.settings).get("output").and_then(|v| v.as_str()) == Some("ps");
             match VPad::new(sh.clone(), ps) {
                 Ok(v) => { *lock(&sh.vpad) = Some(v); lock(&sh.map_error).clear(); }
-                Err(_) => *lock(&sh.map_error) = "missing_driver".into(),
+                Err(e) => { elog(&format!("virtual pad failed: {e}")); *lock(&sh.map_error) = "missing_driver".into() }
             }
         }
         sh.mapping.store(true, SeqCst);
@@ -647,7 +676,10 @@ fn input_thread(sh: Arc<Shared>) {
     let (mut count, mut rate_t) = (0u32, Instant::now());
     let mut last_report: Option<Instant> = None;
     let mut last_scan = Instant::now();
-    let mut ring: Vec<f32> = Vec::with_capacity(512);
+    let mut ring: std::collections::VecDeque<f32> = std::collections::VecDeque::with_capacity(512);
+    let mut last_data = Instant::now();
+    let mut last_pkt: u32 = u32::MAX;
+    let mut fresh = true;
     let drop_conn = |sh: &Shared| { *lock(&sh.writer) = None; *lock(&sh.conn) = None; *lock(&sh.snap) = None; };
     while sh.running.load(SeqCst) {
         if sh.released.load(SeqCst) {
@@ -666,12 +698,19 @@ fn input_thread(sh: Arc<Shared>) {
                 thread::sleep(Duration::from_secs(1));
                 continue;
             }
+            if let Some(c) = lock(&sh.conn).as_ref() { elog(&format!("connected: {} {} ({})", c.kind.label(), c.name, if c.bt { "Bluetooth" } else { "USB/XInput" })); }
             last_report = None;
+            last_data = Instant::now();
+            last_pkt = u32::MAX;
         }
         if last_scan.elapsed() > Duration::from_secs(3) {
             let devs = scan_devices(&mut api, &sh); // keeps the controller picker up to date
+            // automatic mode: a PlayStation controller always wins over an XInput pad
+            let auto = lock(&sh.settings).get("device").and_then(|v| v.as_str()).map_or(true, |s| s.is_empty());
+            let switch = auto && matches!(src, Some(Src::X(_))) && devs.iter().any(|d| !matches!(d.kind, Kind::XInput(_)));
             *lock(&sh.devices) = devs;
             last_scan = Instant::now();
+            if switch { elog("PlayStation controller appeared: switching to it"); src = None; drop_conn(&sh); continue; }
         }
         let got: Result<Option<Raw>, ()> = match src.as_ref().unwrap() {
             Src::Hid(dev, kind) => match dev.read_timeout(&mut buf, 200) {
@@ -680,9 +719,17 @@ fn input_thread(sh: Arc<Shared>) {
                 Err(_) => Err(()),
             },
             Src::X(i) => {
-                thread::sleep(Duration::from_micros(900)); // ~1000 Hz polling
+                // ~1000 Hz polling; controllers that update faster (2-8 kHz) get a tight 8 kHz poll
+                if lock(&sh.stats).rate > 1500 {
+                    let t = Instant::now();
+                    while t.elapsed() < Duration::from_micros(110) { std::hint::spin_loop(); }
+                } else {
+                    thread::sleep(Duration::from_micros(900));
+                }
                 match xinput_state(*i) {
                     Some(st) => {
+                        fresh = st.dwPacketNumber != last_pkt;
+                        last_pkt = st.dwPacketNumber;
                         let g = st.Gamepad;
                         Ok(Some(from_xinput(g.wButtons as u16, g.bLeftTrigger, g.bRightTrigger, g.sThumbLX, g.sThumbLY, g.sThumbRX, g.sThumbRY)))
                     }
@@ -690,14 +737,29 @@ fn input_thread(sh: Arc<Shared>) {
                 }
             }
         };
-        let s = match got { Ok(Some(s)) => s, Ok(None) => continue, Err(_) => { src = None; drop_conn(&sh); continue; } };
+        if let Some(Src::Hid(..)) = src { fresh = true; }
+        let s = match got {
+            Ok(Some(s)) => { last_data = Instant::now(); s }
+            Ok(None) => {
+                // watchdog: a controller that goes silent (sleep/resume, USB hiccup) gets reconnected
+                if matches!(src, Some(Src::Hid(..))) && last_data.elapsed() > Duration::from_millis(1500) {
+                    elog("controller went silent for 1.5 s: reconnecting");
+                    src = None;
+                    drop_conn(&sh);
+                }
+                continue;
+            }
+            Err(_) => { elog("controller disconnected"); src = None; drop_conn(&sh); continue; }
+        };
         let t0 = Instant::now();
         let dt = last_report.map(|l| (t0 - l).as_secs_f64()).unwrap_or(0.0);
-        if dt > 0.0 {
-            if ring.len() >= 480 { ring.remove(0); }
-            ring.push((dt * 1e6) as f32);
+        if fresh {
+            if dt > 0.0 {
+                if ring.len() >= 480 { ring.pop_front(); }
+                ring.push_back((dt * 1e6) as f32);
+            }
+            last_report = Some(t0);
         }
-        last_report = Some(t0);
 
         // calibrations
         {
@@ -742,13 +804,13 @@ fn input_thread(sh: Arc<Shared>) {
         compute_output(&sh, &s);
         let us = t0.elapsed().as_secs_f64() * 1e6;
         *lock(&sh.snap) = Some((s, o));
-        count += 1;
+        if fresh { count += 1; }
         let mut st = lock(&sh.stats);
         st.proc_us = st.proc_us * 0.95 + us * 0.05;
         st.proc_max = (st.proc_max * 0.999).max(us);
         if rate_t.elapsed() >= Duration::from_secs(1) {
             st.rate = (count as f64 / rate_t.elapsed().as_secs_f64()).round() as u32;
-            st.intervals = ring.clone();
+            st.intervals = ring.iter().copied().collect();
             count = 0;
             rate_t = Instant::now();
         }
@@ -906,6 +968,11 @@ fn restore(sh: &Arc<Shared>, o: &Value) -> Value {
     add("ok", "Edge Hub won't start remapping on its own any more");
     let st = system_status();
     let mut lines = vec![];
+    if hidhide_installed() {
+        lines.push(format!("& '{HH_CLI}' --cloak-off"));
+        lock(&sh.settings)["hidhide_on"] = json!(false);
+        add("ok", "HidHide turned off: games can see your real controller again");
+    }
     let mut did = vec![];
     if opt("reset_driver") {
         let parents: Vec<String> = as_list(&st["devices"]).iter().filter(|d| d["usb_parent"] == json!(true))
@@ -956,6 +1023,95 @@ fn restore(sh: &Arc<Shared>, o: &Value) -> Value {
     json!({"log": log.iter().map(|(a, b)| json!([a, b])).collect::<Vec<_>>(), "status": after})
 }
 
+// ------------------------------------------------------------------ HidHide (hide the real controller from games)
+
+const HH_CLI: &str = r"C:\Program Files\Nefarius Software Solutions\HidHide\x64\HidHideCLI.exe";
+fn hidhide_installed() -> bool { std::path::Path::new(HH_CLI).exists() }
+/// "\\?\HID#VID_054C&PID_09CC&MI_03#7&1689be04&0&0000#{guid}" -> "HID\VID_054C&PID_09CC&MI_03\7&1689BE04&0&0000"
+fn instance_from_path(p: &str) -> Option<String> {
+    let parts: Vec<&str> = p.trim_start_matches(r"\\?\").split('#').collect();
+    if parts.len() < 3 { return None; }
+    Some(format!("{}\\{}\\{}", parts[0], parts[1], parts[2]).to_uppercase())
+}
+fn hidhide_status(sh: &Shared) -> Value {
+    let dev = lock(&sh.conn).as_ref().filter(|c| !matches!(c.kind, Kind::XInput(_))).and_then(|c| instance_from_path(&c.id));
+    json!({"installed": hidhide_installed(), "on": sh.setting_bool("hidhide_on", false), "device": dev})
+}
+fn hidhide_set(sh: &Shared, on: bool) -> Value {
+    if !hidhide_installed() {
+        let _ = Command::new("cmd").args(["/c", "title Installing HidHide && winget install --id Nefarius.HidHide -e --accept-source-agreements --accept-package-agreements && echo. && echo Done. Restart your PC, then turn the switch on again in Edge Hub. && pause"])
+            .creation_flags(NEW_CONSOLE).spawn();
+        return json!({"ok": false, "installing": true});
+    }
+    let q = |s: &str| format!("'{}'", s.replace('\'', "''"));
+    let mut lines = vec![];
+    if on {
+        let mut exes = vec![PathBuf::from(std::env::var("LOCALAPPDATA").unwrap_or_default()).join("Programs\\EdgeHub\\EdgeHub.exe")];
+        if let Ok(me) = std::env::current_exe() { exes.push(me); }
+        for e in exes { lines.push(format!("& {} --app-reg {}", q(HH_CLI), q(&e.display().to_string()))); }
+        let Some(dev) = hidhide_status(sh)["device"].as_str().map(String::from) else {
+            return json!({"ok": false, "error": "Connect a PlayStation controller first"});
+        };
+        lines.push(format!("& {} --dev-hide {}", q(HH_CLI), q(&dev)));
+        lines.push(format!("& {} --cloak-on", q(HH_CLI)));
+    } else {
+        lines.push(format!("& {} --cloak-off", q(HH_CLI)));
+    }
+    match run_elevated(&lines) {
+        None => json!({"ok": false, "error": "The Windows permission prompt was declined"}),
+        Some(_) => {
+            lock(&sh.settings)["hidhide_on"] = json!(on);
+            sh.save_settings();
+            elog(if on { "HidHide: real controller hidden from games" } else { "HidHide: real controller visible again" });
+            json!({"ok": true})
+        }
+    }
+}
+
+fn set_autostart(on: bool) {
+    let key = r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run";
+    let exe = std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default();
+    let _ = if on {
+        Command::new("reg").args(["add", key, "/v", "EdgeHub", "/t", "REG_SZ", "/d", &format!("\"{exe}\" --minimized"), "/f"]).creation_flags(NO_WINDOW).status()
+    } else {
+        Command::new("reg").args(["delete", key, "/v", "EdgeHub", "/f"]).creation_flags(NO_WINDOW).status()
+    };
+}
+
+/// Only one Edge Hub at a time; a second launch brings the first one to the front.
+fn first_instance() -> bool {
+    use windows_sys::Win32::Foundation::{GetLastError, ERROR_ALREADY_EXISTS};
+    use windows_sys::Win32::System::Threading::CreateMutexW;
+    use windows_sys::Win32::UI::WindowsAndMessaging::*;
+    let name: Vec<u16> = "Local\\EdgeHubSingleInstance\0".encode_utf16().collect();
+    let h = unsafe { CreateMutexW(std::ptr::null(), 0, name.as_ptr()) };
+    if h.is_null() || unsafe { GetLastError() } != ERROR_ALREADY_EXISTS { return true; }
+    // ask the running copy to show its window (works even when it's hidden in the tray)
+    let ev: Vec<u16> = SHOW_EVENT.encode_utf16().collect();
+    unsafe {
+        use windows_sys::Win32::System::Threading::{OpenEventW, SetEvent, EVENT_MODIFY_STATE};
+        let e = OpenEventW(EVENT_MODIFY_STATE, 0, ev.as_ptr());
+        if !e.is_null() { SetEvent(e); }
+    }
+    false
+}
+const SHOW_EVENT: &str = "Local\\EdgeHubShowWindow\0";
+
+/// Waits for "show yourself" signals from later launches.
+fn show_signal_thread(proxy: tao::event_loop::EventLoopProxy<UserEvent>) {
+    use windows_sys::Win32::System::Threading::{CreateEventW, WaitForSingleObject};
+    let ev: Vec<u16> = SHOW_EVENT.encode_utf16().collect();
+    let h = unsafe { CreateEventW(std::ptr::null(), 0, 0, ev.as_ptr()) };
+    if h.is_null() { return; }
+    let h = h as usize;
+    thread::spawn(move || {
+        loop {
+            if unsafe { WaitForSingleObject(h as _, u32::MAX) } != 0 { break; }
+            if proxy.send_event(UserEvent::Show).is_err() { break; }
+        }
+    });
+}
+
 // ------------------------------------------------------------------ UI state + API
 
 fn state_json(sh: &Shared) -> Value {
@@ -997,6 +1153,7 @@ fn state_json(sh: &Shared) -> Value {
     v["auto"] = json!(lock(&sh.auto_base).is_some());
     v["shake_ok"] = json!(sh.shake_ok.load(SeqCst));
     v["fg"] = json!(lock(&sh.fg_exe).clone());
+    v["hidhide"] = json!(sh.setting_bool("hidhide_on", false));
     let rg = *lock(&sh.rumble_game);
     v["rumble_game"] = json!([rg.0, rg.1]);
     v
@@ -1020,7 +1177,7 @@ fn devices_json(sh: &Shared) -> Value {
     })).collect::<Vec<_>>())
 }
 
-enum UserEvent { Eval(String), Quit, Drag, Min, MaxToggle, Resize(u8) }
+enum UserEvent { Eval(String), Quit, Close, Show, ToggleMap, Tick, Drag, Min, MaxToggle, Resize(u8) }
 
 fn api_call(sh: &Arc<Shared>, m: &str, a: &[Value], proxy: &tao::event_loop::EventLoopProxy<UserEvent>) -> Result<Value, String> {
     let arg = |i: usize| a.get(i).cloned().unwrap_or(Value::Null);
@@ -1053,6 +1210,7 @@ fn api_call(sh: &Arc<Shared>, m: &str, a: &[Value], proxy: &tao::event_loop::Eve
             sh.save_settings();
             if k == "bt_poll_ms" { lock(&sh.out).1 = None; }
             if k == "device" { sh.reopen.store(true, SeqCst); }
+            if k == "start_with_windows" { set_autostart(arg(1).as_bool().unwrap_or(false)); }
             if k == "output" && sh.mapping.load(SeqCst) {
                 // switch the virtual controller type live
                 if let Some(v) = lock(&sh.vpad).take() { v.close(); }
@@ -1082,11 +1240,16 @@ fn api_call(sh: &Arc<Shared>, m: &str, a: &[Value], proxy: &tao::event_loop::Eve
         "open_data_dir" => { let _ = fs::create_dir_all(data_dir()); let _ = Command::new("explorer").arg(data_dir()).spawn(); Value::Null }
         "recent_apps" => json!(lock(&sh.recent_apps).clone()),
         "list_devices" => devices_json(sh),
+        "hidhide_status" => hidhide_status(sh),
+        "hidhide_set" => hidhide_set(sh, arg(0).as_bool().unwrap_or(false)),
+        "read_log" => json!(fs::read_to_string(data_dir().join("edgehub.log")).unwrap_or_default()
+            .lines().rev().take(40).collect::<Vec<_>>().into_iter().rev().collect::<Vec<_>>().join("\n")),
         "system_status" => system_status(),
         "restore" => restore(sh, &arg(0)),
         "release" => { release(sh); Value::Null }
         "resume" => { sh.released.store(false, SeqCst); lock(&sh.out).1 = None; Value::Null }
-        "quit" | "win_close" => { let _ = proxy.send_event(UserEvent::Quit); Value::Null }
+        "quit" => { let _ = proxy.send_event(UserEvent::Quit); Value::Null }
+        "win_close" => { let _ = proxy.send_event(UserEvent::Close); Value::Null }
         "win_drag" => { let _ = proxy.send_event(UserEvent::Drag); Value::Null }
         "win_min" => { let _ = proxy.send_event(UserEvent::Min); Value::Null }
         "win_max" => { let _ = proxy.send_event(UserEvent::MaxToggle); Value::Null }
@@ -1119,10 +1282,32 @@ fn main() {
     use tao::window::{Icon, ResizeDirection, WindowBuilder};
     use wry::{http::Response, WebContext, WebViewBuilder};
 
+    let test_mode = std::env::args().any(|a| a.starts_with("--") && a != "--minimized");
+    let minimized = std::env::args().any(|a| a == "--minimized");
+    if !test_mode && !first_instance() { return; }
     let sh = Shared::new();
+    if !test_mode {
+        rotate_log();
+        elog(&format!("Edge Hub {VERSION} starting"));
+        // create the virtual pad BEFORE looking for controllers, so it can never be mistaken for yours
+        if sh.setting_bool("autostart_mapping", false) { set_mapping(&sh, true); }
+    }
     { let s = sh.clone(); thread::Builder::new().name("input".into()).spawn(move || input_thread(s)).unwrap(); }
     { let s = sh.clone(); thread::spawn(move || writer_thread(s)); }
     { let s = sh.clone(); thread::spawn(move || watcher_thread(s)); }
+    if std::env::args().any(|a| a == "--coldtest") {
+        // same order as a normal launch: threads already running, then autostart remapping
+        if sh.setting_bool("autostart_mapping", false) { set_mapping(&sh, true); }
+        for ms in [500u64, 1000, 2000, 3500] {
+            thread::sleep(Duration::from_millis(ms.saturating_sub(0)));
+            let c = lock(&sh.conn).clone();
+            println!("  t+{ms}ms conn={:?} pad={:?} slot={:?} rate={}", c.map(|c| (c.kind.label(), c.name, c.bt)),
+                lock(&sh.vpad).as_ref().map(|v| v.is_ps()), *lock(&sh.vpad_slot), lock(&sh.stats).rate);
+        }
+        println!("  devices seen: {}", devices_json(&sh));
+        set_mapping(&sh, false);
+        return;
+    }
     if std::env::args().any(|a| a == "--shaketest") {
         // shake must stay off unless the active window is on the single-player list
         let cur = lock(&sh.current).clone();
@@ -1196,8 +1381,6 @@ fn main() {
         sh.running.store(false, SeqCst);
         return;
     }
-    if sh.setting_bool("autostart_mapping", false) { set_mapping(&sh, true); }
-
     let event_loop = EventLoopBuilder::<UserEvent>::with_user_event().build();
     let proxy = event_loop.create_proxy();
     let icon = Icon::from_rgba(include_bytes!("../icon64.rgba").to_vec(), 64, 64).ok();
@@ -1209,6 +1392,7 @@ fn main() {
         .with_undecorated_shadow(true)
         .with_window_icon(icon.clone())
         .with_taskbar_icon(icon)
+        .with_visible(!minimized)
         .build(&event_loop)
         .expect("window");
 
@@ -1242,12 +1426,41 @@ fn main() {
     {
         let (s, p) = (sh.clone(), proxy.clone());
         thread::spawn(move || {
+            let mut n = 0u32;
             while s.running.load(SeqCst) {
                 let js = format!("window.__eh_state&&window.__eh_state({})", state_json(&s));
                 if p.send_event(UserEvent::Eval(js)).is_err() { break; }
+                n += 1;
+                if n % 120 == 0 { let _ = p.send_event(UserEvent::Tick); }
                 thread::sleep(Duration::from_millis(16));
             }
         });
+    }
+
+    show_signal_thread(proxy.clone());
+
+    // ---- system tray: keeps Edge Hub (and your remaps) running when the window is closed
+    use tray_icon::menu::{CheckMenuItem, Menu, MenuEvent, MenuItem, PredefinedMenuItem};
+    use tray_icon::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
+    let m_open = MenuItem::new("Open Edge Hub", true, None);
+    let m_map = CheckMenuItem::new("Remapping", true, sh.mapping.load(SeqCst), None);
+    let m_quit = MenuItem::new("Quit Edge Hub", true, None);
+    let tray_menu = Menu::new();
+    let _ = tray_menu.append_items(&[&m_open, &m_map, &PredefinedMenuItem::separator(), &m_quit]);
+    let tray = tray_icon::Icon::from_rgba(include_bytes!("../icon64.rgba").to_vec(), 64, 64).ok().and_then(|ic|
+        TrayIconBuilder::new().with_menu(Box::new(tray_menu)).with_tooltip("Edge Hub").with_icon(ic).build().ok());
+    {
+        let p = proxy.clone();
+        TrayIconEvent::set_event_handler(Some(move |e: TrayIconEvent| {
+            let show = matches!(e, TrayIconEvent::Click { button: MouseButton::Left, button_state: MouseButtonState::Up, .. } | TrayIconEvent::DoubleClick { .. });
+            if show { let _ = p.send_event(UserEvent::Show); }
+        }));
+        let p = proxy.clone();
+        let (open_id, map_id, quit_id) = (m_open.id().clone(), m_map.id().clone(), m_quit.id().clone());
+        MenuEvent::set_event_handler(Some(move |e: MenuEvent| {
+            let ev = if e.id == open_id { UserEvent::Show } else if e.id == map_id { UserEvent::ToggleMap } else if e.id == quit_id { UserEvent::Quit } else { return };
+            let _ = p.send_event(ev);
+        }));
     }
 
     let shut = sh.clone();
@@ -1258,9 +1471,31 @@ fn main() {
             shut.running.store(false, SeqCst);
             *cf = ControlFlow::Exit;
         };
+        let close_to_tray = shut.setting_bool("close_to_tray", true) && tray.is_some();
         match event {
             Event::UserEvent(UserEvent::Eval(js)) => { let _ = webview.evaluate_script(&js); }
             Event::UserEvent(UserEvent::Quit) => quit(control_flow),
+            Event::UserEvent(UserEvent::Close) => { if close_to_tray { window.set_visible(false); } else { quit(control_flow); } }
+            Event::UserEvent(UserEvent::Show) => { window.set_visible(true); window.set_minimized(false); window.set_focus(); }
+            Event::UserEvent(UserEvent::ToggleMap) => {
+                let on = !shut.mapping.load(SeqCst);
+                set_mapping(&shut, on);
+                lock(&shut.settings)["autostart_mapping"] = json!(on);
+                shut.save_settings();
+                m_map.set_checked(shut.mapping.load(SeqCst));
+            }
+            Event::UserEvent(UserEvent::Tick) => {
+                m_map.set_checked(shut.mapping.load(SeqCst));
+                if let Some(t) = &tray {
+                    let st = state_json(&shut);
+                    let tip = if st["connected"] == json!(true) {
+                        format!("Edge Hub - {} {} - {} Hz{}{}", st["kind"].as_str().unwrap_or(""), st["conn"].as_str().unwrap_or(""), st["rate"],
+                            st["battery"].as_u64().map(|b| format!(" - {b}%")).unwrap_or_default(),
+                            if shut.mapping.load(SeqCst) { " - Remapping ON" } else { "" })
+                    } else { "Edge Hub - no controller".to_string() };
+                    let _ = t.set_tooltip(Some(tip));
+                }
+            }
             Event::UserEvent(UserEvent::Drag) => { let _ = window.drag_window(); }
             Event::UserEvent(UserEvent::Min) => window.set_minimized(true),
             Event::UserEvent(UserEvent::MaxToggle) => window.set_maximized(!window.is_maximized()),
@@ -1272,7 +1507,9 @@ fn main() {
                 };
                 let _ = window.drag_resize_window(dir);
             }
-            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => quit(control_flow),
+            Event::WindowEvent { event: WindowEvent::CloseRequested, .. } => {
+                if close_to_tray { window.set_visible(false); } else { quit(control_flow); }
+            }
             _ => {}
         }
     });

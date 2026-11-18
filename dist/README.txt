@@ -1,4 +1,4 @@
-EDGE HUB - controller control center for Windows 10 / 11
+﻿EDGE HUB - controller control center for Windows 10 / 11
 ==========================================================
 
 WORKS WITH
@@ -33,5 +33,7 @@ TIPS
   - If a game reacts twice to each press, it's seeing your real controller AND
     Edge Hub's virtual one: turn on Steam Input for that game, or use HidHide.
   - "Stick shake" only works in games you add to its single-player list.
+  - Settings -> Hide my controller (HidHide) stops games seeing two controllers.
+  - Settings -> Start with Windows keeps Edge Hub always on in the tray.
   - To undo everything: Settings -> "Restore original setup".
   - Your settings are saved in %APPDATA%\EdgeHub.

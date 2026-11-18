@@ -109,6 +109,12 @@ details.adv[open] summary:before{transform:rotate(90deg)}
 .releasedbar.on{display:flex}
 .curvebar .btn{padding:6px 12px}
 .devlist{display:grid;gap:8px}
+.statuslist{display:grid;gap:6px}
+.st{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--panel2);font-size:13px}
+.st i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;flex:none}
+.st.ok i{background:#2fd27a33;color:var(--ok)} .st.warn i{background:#ffb02033;color:var(--warn)} .st.bad i{background:#ff2a3d33;color:var(--accent)}
+.st b{font-weight:600} .st span{color:var(--muted);flex:1}
+.st button{padding:4px 10px;font-size:12px}
 .dev{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:11px;background:var(--panel2);border:1px solid var(--line);cursor:pointer}
 .dev:hover{border-color:#555} .dev.on{border-color:var(--accent);box-shadow:0 0 14px -6px var(--accent)}
 .dev .ic{width:34px;height:34px;border-radius:9px;display:grid;place-items:center;font-size:11px;font-weight:700;color:#fff}
@@ -262,6 +268,7 @@ textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-sel
   <div class="grid" style="grid-template-columns:1.6fr 1fr">
     <div class="card"><h3>Live controller <span class="sub">click a button to remap it</span></h3><div class="pad-wrap" id="pad-home"></div></div>
     <div class="grid" style="align-content:start">
+      <div class="card"><h3>Status <span class="sub">what's working</span></h3><div id="statuslist" class="statuslist"></div></div>
       <div class="card"><h3>Profiles</h3><div class="profcards" id="profcards"></div>
         <div class="row" style="margin-top:14px"><button class="btn" id="newprof">+ New</button><button class="btn" id="dupprof">Duplicate</button><div class="spacer"></div><button class="btn" id="delprof">Delete</button></div>
         <div class="row"><button class="btn" id="expprof">Share</button><button class="btn" id="impprof">Import</button><span class="muted small">double-click a profile to rename it</span></div></div>
@@ -473,6 +480,24 @@ textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-sel
       <div class="row"><label>Turn on at launch</label><label class="tog"><input type="checkbox" id="autostart"><span></span></label></div>
       <div class="note" style="margin-top:10px">While remapping is on, games can see <b>two</b> controllers: your real one and the virtual one. If you get double inputs, turn off Steam Input for the game, or use <b>HidHide</b> to hide the real controller from games.</div>
     </div>
+    <div class="card big" style="grid-column:1 / -1"><h3>App & reliability</h3>
+      <div class="grid g2">
+        <div>
+          <div class="row"><label>Start with Windows</label><label class="tog"><input type="checkbox" id="sww"><span></span></label></div>
+          <span class="help">Edge Hub opens quietly in the tray when you sign in, so your settings are always on, as if they were saved on the controller.</span>
+          <div class="row"><label>Keep running in tray</label><label class="tog"><input type="checkbox" id="ctt"><span></span></label></div>
+          <span class="help">Closing the window keeps Edge Hub running (tray icon by the clock). Right-click the tray icon to quit.</span>
+          <div class="row"><button class="btn" id="showlog">Show connection log</button></div>
+          <pre id="logbox" class="mono small" style="display:none;background:#0f0f15;padding:10px;border-radius:10px;max-height:220px;overflow:auto;white-space:pre-wrap;user-select:text"></pre>
+        </div>
+        <div>
+          <b>Hide your real controller from games</b> <span class="badge ok" style="margin-left:6px">recommended</span>
+          <div class="muted small" style="margin:8px 0">With remapping on, games can see <b>two</b> controllers, your real one and Edge Hub's, and sometimes listen to the wrong one. That's why it can seem to only work after replugging. <b>HidHide</b> (free, by the makers of the virtual-controller driver) hides your real controller from games, so they only ever see Edge Hub's. Edge Hub itself can still read it.</div>
+          <div id="hhstat" class="shakestat off">Checking…</div>
+          <div class="row"><button class="btn pri" id="hhbtn">…</button></div>
+        </div>
+      </div>
+    </div>
     <div class="card" style="grid-column:1 / -1"><h3>Controller <span class="sub">PS4 · PS5 / DualSense Edge · Xbox and other XInput pads</span></h3>
       <div id="devlist" class="devlist"></div>
       <div class="muted small" style="margin-top:8px">Edge Hub uses the first controller it finds unless you pick one here. Turn a controller on and it appears within a few seconds.</div></div>
@@ -558,6 +583,7 @@ function mockApi(){
       {name:'Wireless Controller',id:'USB\\VID_054C&PID_09CC&MI_00\\1',service:'usbaudio',provider:'Microsoft',filters:[],standard:true}]}),
     restore: async()=>({log:[['ok','Remapping turned off and the virtual controller removed'],['ok','Controller released']],status:{all_standard:true,devices:[]}}),
     release: async()=>{}, resume: async()=>{}, quit: async()=>{},
+    hidhide_status: async()=>({installed:false,on:false,device:null}), hidhide_set: async()=>({installing:true}), read_log: async()=>'[1] Edge Hub 2.1 starting\n[2] connected: PS4 Wireless Controller (USB/XInput)',
     list_devices: async()=>[{id:'p1',name:'Wireless Controller',kind:'PS4',conn:'USB',active:true},{id:'xinput:0',name:'Xbox controller (player 1)',kind:'Xbox',conn:'XInput',active:false}],
     import_profile: async(x)=>({profiles:['Default'],current:'Default',profile:x}), recent_apps: async()=>['cod.exe','fortnite.exe','chrome.exe'],
   };
@@ -866,6 +892,40 @@ function renderGames(){
 function linkGame(exe){
   exe = (exe || '').trim().toLowerCase(); if (!exe) return; if (!exe.endsWith('.exe')) exe += '.exe';
   P.games = P.games || []; if (!P.games.includes(exe)) P.games.push(exe); save(); toast(`${exe} will switch to "${P.name}"`);
+}
+function renderStatus(){
+  const c = S.connected, rows = [];
+  rows.push(c ? ['ok', 'Controller', `${S.kind || ''} ${S.conn} · ${S.name}`] : ['bad', 'Controller', 'none found. Plug it in or turn it on']);
+  const drv = (INIT.driver === 'ok');
+  rows.push(drv ? ['ok', 'Game driver', 'installed'] : ['warn', 'Game driver', 'not installed', 'Install', () => { go('settings'); }]);
+  rows.push(S.mapping ? ['ok', 'Remapping', `on · games see a ${S.pad === 'ps' ? 'PlayStation' : S.pad === 'xbox' ? 'Xbox' : 'keyboard/mouse only'} controller`]
+                      : ['warn', 'Remapping', 'off. Your settings aren\'t reaching games', 'Turn on', toggleMapping]);
+  rows.push(S.hidhide ? ['ok', 'Real controller hidden', 'games only see Edge Hub']
+                      : ['warn', 'Real controller visible to games', 'can cause double or missed input', 'Fix', () => { go('settings'); $('#hhbtn').scrollIntoView({block:'center'}); }]);
+  if (c) rows.push(S.rate >= 1500 ? ['ok', 'Polling', `${S.rate} Hz (high-speed controller)`] : S.rate >= 900 ? ['ok', 'Polling', `${S.rate} Hz`] : ['warn', 'Polling', `${S.rate} Hz`, 'Tips', () => go('settings')]);
+  rows.push((INIT.settings||{}).start_with_windows ? ['ok', 'Starts with Windows', 'always on in the tray'] : ['warn', 'Starts with Windows', 'off', 'Turn on', async () => { await setApp('start_with_windows', true); }]);
+  const key = JSON.stringify(rows.map(r => r.slice(0, 3)));
+  if (key === renderStatus._k) return; renderStatus._k = key;
+  $('#statuslist').innerHTML = rows.map((r, i) => `<div class="st ${r[0]}"><i>${r[0]==='ok'?'✓':r[0]==='warn'?'!':'✕'}</i><b>${esc(r[1])}</b><span>${esc(r[2])}</span>${r[3] ? `<button class="btn" data-sti="${i}">${r[3]}</button>` : ''}</div>`).join('');
+  $$('[data-sti]').forEach(b => b.onclick = () => rows[+b.dataset.sti][4]());
+}
+async function setApp(k, v){ INIT.settings = INIT.settings || {}; INIT.settings[k] = v; await api.set_setting(k, v); renderStatus._k = null; syncAppToggles(); }
+function syncAppToggles(){ const st = INIT.settings || {}; $('#sww').checked = !!st.start_with_windows; $('#ctt').checked = st.close_to_tray !== false; }
+async function renderHidHide(){
+  let h; try { h = await api.hidhide_status(); } catch(e) { return; }
+  const stat = $('#hhstat'), btn = $('#hhbtn');
+  if (!h.installed) { stat.className = 'shakestat off'; stat.textContent = 'HidHide isn\'t installed yet.'; btn.textContent = 'Install HidHide'; btn.dataset.act = 'install'; }
+  else if (h.on) { stat.className = 'shakestat on'; stat.textContent = 'On: games only see Edge Hub\'s controller.'; btn.textContent = 'Turn off'; btn.dataset.act = 'off'; }
+  else { stat.className = 'shakestat off'; stat.textContent = h.device ? 'Installed, but your controller is still visible to games.' : 'Installed. Connect a PlayStation controller to hide it.'; btn.textContent = 'Hide my controller'; btn.dataset.act = 'on'; }
+}
+async function hidhideClick(){
+  const act = $('#hhbtn').dataset.act; $('#hhbtn').disabled = true;
+  try {
+    const r = await api.hidhide_set(act !== 'off');
+    if (r.installing) toast('Installing HidHide: click Yes, restart your PC, then press this button again');
+    else if (r.ok) toast(act === 'off' ? 'Games can see your real controller again' : 'Done: games now only see Edge Hub');
+    else toast(r.error || 'Something went wrong');
+  } finally { $('#hhbtn').disabled = false; renderHidHide(); }
 }
 function renderDevices(list){
   const pref = (INIT.settings||{}).device || '';
@@ -1330,16 +1390,16 @@ function drawTouch(){
 
 function drawPoll(){
   const p = S.poll || {recent: []}, cv = $('#pollcv'), g = cv.getContext('2d'), W = cv.width, H = cv.height, L = 52;
-  $('#pl-hz').textContent = S.rate + ' Hz'; $('#pl-avg').textContent = p.avg ? (p.avg/1000).toFixed(2) + ' ms' : '-';
+  $('#pl-hz').textContent = S.rate + ' Hz'; $('#pl-avg').textContent = p.avg ? (p.avg/1000).toFixed(p.avg < 900 ? 3 : 2) + ' ms' : '-';
   $('#pl-mm').textContent = p.avg ? (p.min/1000).toFixed(2) + ' / ' + (p.max/1000).toFixed(2) : '-';
   $('#pl-jit').textContent = p.avg ? '±' + (p.jitter/1000).toFixed(3) + ' ms' : '-';
   g.clearRect(0, 0, W, H);
-  const top = Math.max(5000, ...(p.recent || [0])) * 1.1, Y = v => H - 20 - v/top*(H - 30);
+  const top = Math.max(600, ...(p.recent || [0])) * 1.25, Y = v => H - 20 - v/top*(H - 30);
   g.fillStyle = '#8b8a99'; g.font = '15px Segoe UI'; g.strokeStyle = '#24242e';
-  for (const ms of [1, 2, 4, 8]) { if (ms*1000 > top) continue; g.beginPath(); g.moveTo(L, Y(ms*1000)); g.lineTo(W, Y(ms*1000)); g.stroke(); g.fillText(ms + ' ms', 4, Y(ms*1000) + 5); }
+  for (const ms of [0.125, 0.25, 0.5, 1, 2, 4, 8]) { if (ms*1000 > top) continue; g.beginPath(); g.moveTo(L, Y(ms*1000)); g.lineTo(W, Y(ms*1000)); g.stroke(); g.fillText(ms + ' ms', 4, Y(ms*1000) + 5); }
   const r = p.recent || [], bw = (W - L) / Math.max(1, r.length);
   r.forEach((v, i) => { g.fillStyle = v > (p.avg || 4000) * 1.5 ? '#ffb020' : P.color; g.fillRect(L + i*bw, Y(v), Math.max(1, bw - 1), H - 20 - Y(v)); });
-  g.fillText('1000 Hz = 1 ms bars · 250 Hz = 4 ms bars', L, H - 3);
+  g.fillText('8000 Hz = 0.125 ms · 1000 Hz = 1 ms · 250 Hz = 4 ms', L, H - 3);
 }
 
 /* ---------------- live loop ---------------- */
@@ -1366,8 +1426,9 @@ function liveUpdate(){
   updatePads();
   const page = ($('.page.on') || {}).id;
   if (page === 'p-home') {
+    renderStatus();
     $('#h-conn').textContent = c ? S.conn : 'None'; $('#h-name').textContent = c ? (S.name || '') : 'Plug in over USB or pair over Bluetooth';
-    $('#h-hz').textContent = c ? S.rate : 0; $('#h-hzsub').textContent = c ? (S.rate >= 900 && S.conn === 'USB' ? 'max for this controller (full-speed USB)' : `one report every ${(1000/Math.max(1,S.rate)).toFixed(1)} ms`) : '';
+    $('#h-hz').textContent = c ? S.rate : 0; $('#h-hzsub').textContent = c ? (S.rate >= 1500 ? `high-speed controller · ${(1000/S.rate).toFixed(3)} ms per report` : S.rate >= 900 && S.conn === 'USB' && S.kind !== 'Xbox' ? 'max for full-speed USB controllers' : `one report every ${(1000/Math.max(1,S.rate)).toFixed(1)} ms`) : '';
     $('#h-lat').textContent = c ? (S.proc_us/1000).toFixed(3) : '0';
     $('#h-bat').textContent = bat == null ? '—' : bat + '%'; $('#h-chg').textContent = c ? (S.charging ? 'Charging / cable' : 'On battery') : '';
   }
@@ -1517,6 +1578,11 @@ async function boot(){
   $('#shakeadd').onclick = () => addShakeGame($('#shakerecent').value);
   $('#shakeadd2').onclick = () => { addShakeGame($('#shakeexe').value); $('#shakeexe').value = ''; };
   setInterval(() => { if (($('.page.on')||{}).id === 'p-sticks') refreshRecent(); }, 4000);
+  syncAppToggles();
+  $('#sww').onchange = e => setApp('start_with_windows', e.target.checked).then(() => toast(e.target.checked ? 'Edge Hub will start with Windows (in the tray)' : 'Won\'t start with Windows'));
+  $('#ctt').onchange = e => setApp('close_to_tray', e.target.checked);
+  $('#hhbtn').onclick = hidhideClick; renderHidHide();
+  $('#showlog').onclick = async () => { const b = $('#logbox'); b.style.display = b.style.display === 'none' ? '' : 'none'; if (b.style.display === '') b.textContent = (await api.read_log()) || 'No events logged yet.'; };
   $('#profrumble').checked = (INIT.settings||{}).profile_rumble !== false; $('#profrumble').onchange = e => api.set_setting('profile_rumble', e.target.checked);
   $('#lowbat').checked = (INIT.settings||{}).low_battery_warn !== false; $('#lowbat').onchange = e => api.set_setting('low_battery_warn', e.target.checked);
   $('#autosw').checked = (INIT.settings||{}).auto_switch !== false; $('#autosw').onchange = e => api.set_setting('auto_switch', e.target.checked);

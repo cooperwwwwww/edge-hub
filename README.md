@@ -26,7 +26,10 @@
 - **Light bar** colours and effects, vibration strength, low-battery warning
 - **Profiles** with automatic switching per game, and share codes to send a profile to a friend
 - **Output as Xbox or PlayStation**: games see a virtual controller of your choice (via ViGEmBus)
-- **Tester** with a live polling-rate meter (report timing, jitter)
+- **Tester** with a live polling-rate meter (report timing, jitter), ready for 2–8 kHz controllers
+- **Always on**: runs in the system tray, starts with Windows, single instance, auto-reconnect watchdog
+- **Hide your real controller from games** (HidHide) so games only ever see Edge Hub's controller, with no double input and no wrong-controller problems
+- **Status checklist** on the Home page showing what's working and what needs fixing, with one-click fixes
 - **Restore original setup**: one click to hand the controller back to Windows' standard drivers
 
 Every report is processed the moment it arrives (≈0.01 ms), with no smoothing unless you turn it on.
@@ -39,7 +42,10 @@ Every report is processed the moment it arrives (≈0.01 ms), with no smoothing 
 3. To use your settings in games: **Settings → Install driver** (installs [ViGEmBus](https://github.com/nefarius/ViGEmBus) once), then turn on **Remapping**.
    Keyboard / mouse output, the tester and the light bar work without it.
 
-**Tip:** if a game reacts twice to each press, it's seeing both your real controller and the virtual one. Turn on Steam Input for that game, or use [HidHide](https://github.com/nefarius/HidHide).
+4. Recommended: **Settings → Hide my controller** (installs [HidHide](https://github.com/nefarius/HidHide) once), so games only see Edge Hub's controller.
+5. Optional: **Settings → Start with Windows**. Edge Hub then lives in the tray and your settings are always active.
+
+**Why not save settings onto the controller itself?** PS4/PS5 controllers (and their clones) have no firmware channel for storing mappings, so remaps live in Edge Hub. With *Start with Windows* + *tray* it behaves the same: plug in and play.
 
 ### 1000 Hz over USB (optional)
 

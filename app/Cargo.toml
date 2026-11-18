@@ -1,6 +1,6 @@
-[package]
+﻿[package]
 name = "edgehub"
-version = "2.0.0"
+version = "2.1.0"
 edition = "2021"
 description = "Edge Hub - controller control center"
 
@@ -16,7 +16,8 @@ vigem-client = { version = "0.1.4", features = ["unstable_xtarget_notification",
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 crc32fast = "1"
-windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Media", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_XboxController"] }
+tray-icon = "0.26"
+windows-sys = { version = "0.61", features = ["Win32_System_Threading", "Win32_Media", "Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_UI_Input_KeyboardAndMouse", "Win32_UI_Input_XboxController", "Win32_Security"] }
 
 [build-dependencies]
 embed-resource = "3"
