@@ -94,37 +94,77 @@
       <pattern id="${id}-hair" width="200" height="3" patternUnits="userSpaceOnUse"><rect width="200" height="1" fill="#fff" opacity=".07"/><rect y="2" width="200" height="1" fill="#000" opacity=".1"/></pattern>`;
   }
 
-  // ---------------------------------------------------------------- shapes per model
-  const SHAPES = {
-    ds4: {
-      body: 'M215 112 C262 98 300 96 330 98 L470 98 C500 96 538 98 585 112 C650 118 690 150 712 210 C735 280 760 370 762 420 C764 470 735 500 700 494 C670 490 650 470 630 440 L588 392 C570 378 545 372 520 372 L280 372 C255 372 230 378 212 392 L170 440 C150 470 130 490 100 494 C65 500 36 470 38 420 C40 370 65 280 88 210 C110 150 150 118 215 112 Z',
-      grips: 'M30 398 C90 372 160 380 222 404 L180 440 C150 470 130 490 100 494 C65 500 36 470 38 420 Z M770 398 C710 372 640 380 578 404 L620 440 C650 470 670 490 700 494 C735 500 764 470 762 420 Z',
-      touch: 'M304 102 L496 102 L492 192 Q490 208 474 208 L326 208 Q310 208 308 192 Z', tp: [304, 102, 192, 106],
-      dpad: [190, 210], face: [610, 210], sticks: [[300, 300], [500, 300]], home: [400, 300],
-      share: [274, 139, -18], options: [526, 139, 18], grille: [400, 245],
-    },
-    ds5: {
-      body: 'M200 118 C250 100 300 98 330 100 L470 100 C500 98 550 100 600 118 C665 128 700 165 718 225 C740 300 768 385 768 430 C768 478 738 506 702 500 C672 495 652 476 632 446 L592 398 C572 382 548 376 520 376 L280 376 C252 376 228 382 208 398 L168 446 C148 476 128 495 98 500 C62 506 32 478 32 430 C32 385 60 300 82 225 C100 165 135 128 200 118 Z',
-      plate: 'M292 104 L508 104 C528 150 548 210 566 270 C578 320 562 370 520 376 L280 376 C238 370 222 320 234 270 C252 210 272 150 292 104 Z',
-      grips: 'M26 400 C88 374 160 382 224 406 L168 446 C148 476 128 495 98 500 C62 506 32 478 32 430 Z M774 400 C712 374 640 382 576 406 L632 446 C652 476 672 495 702 500 C738 506 768 478 768 430 Z',
-      touch: 'M298 104 L502 104 L497 214 Q495 230 478 230 L322 230 Q305 230 303 214 Z', tp: [298, 104, 204, 126],
-      dpad: [186, 214], face: [614, 214], sticks: [[300, 310], [500, 310]], home: [400, 268],
-      share: [278, 130, -22], options: [522, 130, 22],
-    },
-    xbox: {
-      body: 'M220 120 C270 104 330 108 400 112 C470 108 530 104 580 120 C640 130 680 160 705 220 C730 285 760 380 760 430 C760 478 728 502 694 496 C664 490 640 468 620 440 L585 392 C565 372 540 362 510 360 L290 360 C260 362 235 372 215 392 L180 440 C160 468 136 490 106 496 C72 502 40 478 40 430 C40 380 70 285 95 220 C120 160 160 130 220 120 Z',
-      grips: 'M34 402 C94 376 162 384 222 404 L180 440 C160 468 136 490 106 496 C72 502 40 478 40 430 Z M766 402 C706 376 638 384 578 404 L620 440 C640 468 664 490 694 496 C728 502 760 478 760 430 Z',
-      dpad: [305, 296], face: [592, 205], sticks: [[212, 205], [495, 296]], home: [400, 150],
-      share: [352, 205], options: [448, 205],
-    },
-  };
+  // ---------------------------------------------------------------- geometry (measured proportions)
+  const f1 = v => +v.toFixed(1);
+  // smooth closed curve through points (Catmull-Rom -> cubic Bezier)
+  function smooth(pts) {
+    const n = pts.length;
+    let d = `M${f1(pts[0][0])} ${f1(pts[0][1])}`;
+    for (let i = 0; i < n; i++) {
+      const p0 = pts[(i - 1 + n) % n], p1 = pts[i], p2 = pts[(i + 1) % n], p3 = pts[(i + 2) % n];
+      d += ` C${f1(p1[0] + (p2[0] - p0[0]) / 6)} ${f1(p1[1] + (p2[1] - p0[1]) / 6)} ${f1(p2[0] - (p3[0] - p1[0]) / 6)} ${f1(p2[1] - (p3[1] - p1[1]) / 6)} ${f1(p2[0])} ${f1(p2[1])}`;
+    }
+    return d + ' Z';
+  }
+  // left half (top center -> down the left side -> bottom center) mirrored into the full outline
+  const outline = left => smooth(left.concat(left.slice(1, -1).reverse().map(([x, y]) => [800 - x, y])));
+  function trap(a, b, c, d, r) {
+    return `M${f1(a[0])} ${f1(a[1])} L${f1(b[0])} ${f1(b[1])} L${f1(c[0] + 1)} ${f1(c[1] - r)} Q${f1(c[0])} ${f1(c[1])} ${f1(c[0] - r)} ${f1(c[1])}`
+      + ` L${f1(d[0] + r)} ${f1(d[1])} Q${f1(d[0])} ${f1(d[1])} ${f1(d[0] - 1)} ${f1(d[1] - r)} Z`;
+  }
 
-  // PlayStation-style symbols
+  function geometry(model) {
+    if (model === 'ds4') {
+      // outline + part positions traced pixel-by-pixel from a real PS4-style controller photo (photo px -> view box)
+      const s = 1.2, P = (x, y) => [400 + (x - 280.5) * s, 70 + (y - 93) * s];
+      const left = [[280.5, 109], [194, 109], [156, 109], [122, 104.5], [92, 104], [81, 106], [58, 136], [50, 151], [41, 178], [16, 278], [9, 325],
+        [7, 370], [9, 391], [13, 406], [20, 420], [34, 434], [51, 442], [72, 443], [89, 437], [101, 428], [111, 416], [123, 394], [135, 366],
+        [150, 319], [156, 313], [162, 312], [174, 319], [185, 322], [201, 322], [216, 318], [232, 308], [258, 307], [280.5, 307]].map(p => P(...p));
+      const tl = P(193.5, 110);
+      return { w: 547 * s, body: outline(left),
+        touch: trap(P(193.5, 110), P(367.5, 110), P(363.5, 202), P(197.5, 202), 12 * s), tp: [tl[0], tl[1], 174 * s, 92 * s],
+        dpad: P(108, 175), dL: 43 * s, dW: 12.5 * s, face: P(453, 175), fS: 39 * s, fR: 17 * s,
+        sticks: [P(189.5, 260), P(371.5, 260)], sR: 46 * s, home: P(280.5, 268), hR: 13 * s,
+        share: [...P(167.5, 128.5), -12], options: [...P(393.5, 128.5), 12], pill: [14 * s, 27 * s], grille: P(280.5, 215), port: P(280.5, 300),
+        bump: [P(84, 108), P(152, 100)], gripY: P(0, 352)[1], light: [P(197, 110), P(364, 110)], label: 1,
+      };
+    }
+    if (model === 'ds5') {
+      // traced from a straight-on DualSense photo (Wikimedia Commons) and mirrored for symmetry
+      const s = .725, P = (x, y) => [400 + (x - 490) * s, 52 + (y - 34) * s];
+      const left = [[400, 52], [357.9, 52], [275.3, 57.1], [245.6, 55.6], [199.9, 56.4], [176, 61.4], [161.5, 68], [141.9, 85.3], [117.2, 137.6],
+        [102, 180.3], [84.6, 249.9], [75.9, 299.2], [70.9, 349.2], [70.1, 393.5], [76.7, 447.8], [86.1, 471.1], [109.3, 487.7], [134, 498],
+        [156, 506.6], [168.7, 496.4], [178.9, 476.1], [226, 347.1], [236.9, 334], [250.7, 326.1], [271, 324.6], [318.8, 328.9], [400, 328.9]];
+      const plate = [[400, 53], [292, 53], [282, 100], [276, 160], [282, 225], [300, 290], [330, 322], [400, 328]];
+      const tl = P(312, 42);
+      return { w: 660, body: outline(left), plate: outline(plate),
+        touch: trap(P(312, 42), P(668, 42), P(638, 200), P(342, 200), 18 * s), tp: [tl[0], tl[1], 356 * s, 158 * s],
+        dpad: P(213, 170), dL: 70 * s, dW: 23 * s, face: P(767, 170), fS: 63 * s, fR: 30 * s,
+        sticks: [P(348, 272), P(632, 272)], sR: 68 * s, home: P(490, 282), hR: 18 * s, mute: P(490, 340), grille: P(490, 228),
+        share: [...P(283, 78), -4], options: [...P(697, 78), 4], pill: [15 * s, 32 * s],
+        bump: [P(165, 62), P(292, 44)], gripY: P(0, 470)[1], label: 1,
+        strips: [[P(318, 52), P(340, 190)], [P(662, 52), P(640, 190)]], fn: [P(348, 352), P(632, 352)],
+      };
+    }
+    // measured from a straight-on Xbox Series controller photo (Wikimedia Commons), averaged for symmetry
+    const s = .83, P = (x, y) => [400 + (x - 512) * s, 64 + (y - 130) * s];
+    const left = [[512, 130], [440, 129], [380, 127], [340, 125], [300, 131], [265, 145], [238, 165], [218, 192], [205, 225], [190, 268],
+      [172, 315], [155, 365], [142, 415], [132, 465], [126, 515], [127, 560], [135, 600], [150, 630], [172, 650], [198, 657], [222, 650],
+      [240, 630], [256, 598], [276, 562], [300, 532], [330, 512], [380, 503], [450, 500], [512, 500]].map(p => P(...p));
+    return { w: 772 * s, body: outline(left), xbox: 1,
+      dpad: P(399, 390), dL: 52 * s, dW: 18 * s, face: P(726, 266), fS: 47 * s, fR: 22 * s,
+      sticks: [P(298, 264), P(625, 390)], sR: 57 * s, home: P(512, 183), hR: 29 * s,
+      share: P(451, 262), options: P(573, 262), sharebtn: P(512, 303), small: 16 * s,
+      bump: [P(250, 152), P(385, 126)], gripY: P(0, 560)[1],
+    };
+  }
+
+  // PlayStation-style symbols (q = symbol size)
   const PSYM = {
-    triangle: (x, y) => `<path d="M${x} ${y - 10} l10 17 h-20 z"/>`,
-    circle: (x, y) => `<circle cx="${x}" cy="${y}" r="9.5"/>`,
-    cross: (x, y) => `<path d="M${x - 8} ${y - 8} l16 16 M${x + 8} ${y - 8} l-16 16"/>`,
-    square: (x, y) => `<rect x="${x - 8.5}" y="${y - 8.5}" width="17" height="17" rx="1"/>`,
+    triangle: (x, y, q) => `<path d="M${f1(x)} ${f1(y - q)} l${f1(q)} ${f1(q * 1.7)} h${f1(-q * 2)} z"/>`,
+    circle: (x, y, q) => `<circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(q * .95)}"/>`,
+    cross: (x, y, q) => `<path d="M${f1(x - q * .8)} ${f1(y - q * .8)} l${f1(q * 1.6)} ${f1(q * 1.6)} M${f1(x + q * .8)} ${f1(y - q * .8)} l${f1(-q * 1.6)} ${f1(q * 1.6)}"/>`,
+    square: (x, y, q) => `<rect x="${f1(x - q * .85)}" y="${f1(y - q * .85)}" width="${f1(q * 1.7)}" height="${f1(q * 1.7)}" rx="1"/>`,
   };
   const PSCOL = { triangle: '#3fd3a8', circle: '#ff5a6e', cross: '#7aa8ff', square: '#ee8ccf' };
   const XBCOL = { cross: '#3db86c', circle: '#e5484d', square: '#3b82f6', triangle: '#f2c230' };
@@ -140,73 +180,79 @@
   // ---------------------------------------------------------------- parts
   function faceButton(id, k, src, x, y, r, xbox) {
     const sym = k.symbols === 'none' ? '' : xbox
-      ? `<text x="${x}" y="${y + 7}" text-anchor="middle" font-size="20" font-weight="800" font-family="Segoe UI,Arial" fill="${symColor(k, src, true)}" class="nopt">${XBLET[src]}</text>`
-      : `<g fill="none" stroke="${symColor(k, src)}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" class="nopt">${PSYM[src](x, y)}</g>`;
+      ? `<text x="${f1(x)}" y="${f1(y + r * .32)}" text-anchor="middle" font-size="${f1(r * .9)}" font-weight="800" font-family="Segoe UI,Arial" fill="${symColor(k, src, true)}" class="nopt">${XBLET[src]}</text>`
+      : `<g fill="none" stroke="${symColor(k, src)}" stroke-width="${f1(r * .11)}" stroke-linecap="round" stroke-linejoin="round" class="nopt">${PSYM[src](x, y, r * .43)}</g>`;
     return `<g class="k" data-src="${src}">
-      <circle cx="${x}" cy="${y + 3}" r="${r + 1}" fill="#000" opacity=".55"/>
-      <circle cx="${x}" cy="${y}" r="${r}" fill="url(#${id}-btn)" stroke="#000" stroke-opacity=".55" stroke-width="1.5"/>
-      <ellipse cx="${x - r * .22}" cy="${y - r * .42}" rx="${r * .5}" ry="${r * .26}" fill="#fff" opacity="${k.finish === 'chrome' ? .28 : k.finish === 'gloss' ? .22 : .07}"/>${sym}</g>`;
+      <circle cx="${f1(x)}" cy="${f1(y + r * .13)}" r="${f1(r + 1)}" fill="#000" opacity=".55"/>
+      <circle cx="${f1(x)}" cy="${f1(y)}" r="${f1(r)}" fill="url(#${id}-btn)" stroke="#000" stroke-opacity=".55" stroke-width="1.5"/>
+      <ellipse cx="${f1(x - r * .22)}" cy="${f1(y - r * .42)}" rx="${f1(r * .5)}" ry="${f1(r * .26)}" fill="#fff" opacity="${k.finish === 'chrome' ? .28 : k.finish === 'gloss' ? .22 : .07}"/>${sym}</g>`;
   }
-  function psDpad(id, k, cx, cy) {
-    const arm = (src, d, tri) => `<g class="k" data-src="${src}"><path d="${d}" fill="url(#${id}-dpad)" stroke="#000" stroke-opacity=".7" stroke-width="1.5"/>
-      ${k.symbols === 'none' ? '' : `<path d="${tri}" fill="${k.finish === 'chrome' ? '#ffffff55' : L(k.dpad, .3)}" class="nopt"/>`}</g>`;
-    return `<circle class="nopt" cx="${cx}" cy="${cy}" r="66" fill="url(#${id}-well)" opacity=".85"/>
-      ${arm('up', `M${cx - 16} ${cy - 56} h32 v36 l-16 16 l-16 -16 z`, `M${cx} ${cy - 46} l7 10 h-14 z`)}
-      ${arm('down', `M${cx - 16} ${cy + 56} h32 v-36 l-16 -16 l-16 16 z`, `M${cx} ${cy + 46} l7 -10 h-14 z`)}
-      ${arm('left', `M${cx - 56} ${cy - 16} v32 h36 l16 -16 l-16 -16 z`, `M${cx - 46} ${cy} l10 -7 v14 z`)}
-      ${arm('right', `M${cx + 56} ${cy - 16} v32 h-36 l-16 -16 l16 -16 z`, `M${cx + 46} ${cy} l-10 -7 v14 z`)}`;
+  const rot = ([x, y], a) => [x * Math.cos(a) - y * Math.sin(a), x * Math.sin(a) + y * Math.cos(a)];
+  function psDpad(id, k, cx, cy, Ln, hw) {
+    const armPts = [[-hw, -Ln], [hw, -Ln], [hw, -(hw + 3)], [0, -3], [-hw, -(hw + 3)]];
+    const arrow = [[0, -Ln * .8], [hw * .45, -Ln * .8 + hw * .7], [-hw * .45, -Ln * .8 + hw * .7]];
+    const poly = (pts, a) => 'M' + pts.map(p => { const [x, y] = rot(p, a); return `${f1(cx + x)} ${f1(cy + y)}`; }).join(' L') + ' Z';
+    const arm = (src, a) => `<g class="k" data-src="${src}"><path d="${poly(armPts, a)}" fill="url(#${id}-dpad)" stroke="#000" stroke-opacity=".7" stroke-width="1.5" stroke-linejoin="round"/>
+      ${k.symbols === 'none' ? '' : `<path d="${poly(arrow, a)}" fill="${k.finish === 'chrome' ? '#ffffff55' : L(k.dpad, .3)}" class="nopt"/>`}</g>`;
+    return `<circle class="nopt" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(Ln + 12)}" fill="url(#${id}-well)" opacity=".85"/>`
+      + arm('up', 0) + arm('right', Math.PI / 2) + arm('down', Math.PI) + arm('left', -Math.PI / 2);
   }
-  function xbDpad(id, k, cx, cy) {
-    const arm = (src, x, y, w, h) => `<g class="k" data-src="${src}"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="5" fill="url(#${id}-dpad)" stroke="#000" stroke-opacity=".7" stroke-width="1.5"/></g>`;
-    return `<circle class="nopt" cx="${cx}" cy="${cy}" r="52" fill="url(#${id}-well)"/>
-      <circle class="nopt" cx="${cx}" cy="${cy}" r="44" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="3"/>
-      ${arm('up', cx - 14, cy - 44, 28, 34)}${arm('down', cx - 14, cy + 10, 28, 34)}${arm('left', cx - 44, cy - 14, 34, 28)}${arm('right', cx + 10, cy - 14, 34, 28)}
-      <rect class="nopt" x="${cx - 14}" y="${cy - 14}" width="28" height="28" fill="url(#${id}-dpad)"/><circle class="nopt" cx="${cx}" cy="${cy}" r="6" fill="#000" opacity=".35"/>`;
+  function xbDpad(id, k, cx, cy, Ln, hw) {
+    const arm = (src, x, y, w, h) => `<g class="k" data-src="${src}"><rect x="${f1(x)}" y="${f1(y)}" width="${f1(w)}" height="${f1(h)}" rx="4" fill="url(#${id}-dpad)" stroke="#000" stroke-opacity=".7" stroke-width="1.5"/></g>`;
+    return `<circle class="nopt" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(Ln + 10)}" fill="url(#${id}-well)"/>
+      <circle class="nopt" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(Ln + 3)}" fill="none" stroke="#000" stroke-opacity=".45" stroke-width="3"/>
+      ${arm('up', cx - hw, cy - Ln, hw * 2, Ln - hw + 2)}${arm('down', cx - hw, cy + hw - 2, hw * 2, Ln - hw + 2)}
+      ${arm('left', cx - Ln, cy - hw, Ln - hw + 2, hw * 2)}${arm('right', cx + hw - 2, cy - hw, Ln - hw + 2, hw * 2)}
+      <rect class="nopt" x="${f1(cx - hw)}" y="${f1(cy - hw)}" width="${f1(hw * 2)}" height="${f1(hw * 2)}" fill="url(#${id}-dpad)"/><circle class="nopt" cx="${f1(cx)}" cy="${f1(cy)}" r="${f1(hw * .4)}" fill="#000" opacity=".35"/>`;
   }
-  function stick(id, k, src, cx, cy, side, edge) {
-    const ring = k.ring || (edge ? '#2c2c33' : null);
+  function stick(id, k, src, cx, cy, R, side, edge) {
+    const ring = k.ring || (edge ? '#2c2c33' : null), c = (v) => f1(v);
     return `<g class="k stick" data-src="${src}">
-      <circle cx="${cx}" cy="${cy}" r="54" fill="url(#${id}-well)" stroke="${L(k.body, .08)}" stroke-opacity=".6" stroke-width="2"/>
-      <circle cx="${cx}" cy="${cy}" r="44" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="4"/>
-      <g class="capg" id="${id}-${side}" style="transform-origin:${cx}px ${cy}px">
-        <circle cx="${cx}" cy="${cy + 5}" r="39" fill="#000" opacity=".6"/>
-        <circle cx="${cx}" cy="${cy}" r="39" fill="url(#${id}-stick)"/>
-        <circle cx="${cx}" cy="${cy}" r="36.5" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="3.5" stroke-dasharray="1.6 2.6"/>
-        <circle cx="${cx}" cy="${cy}" r="29" fill="url(#${id}-capin)"/>
-        ${ring ? `<circle cx="${cx}" cy="${cy}" r="30.5" fill="none" stroke="${ring}" stroke-width="3"/><circle cx="${cx}" cy="${cy}" r="30.5" fill="none" stroke="${L(ring, .5)}" stroke-width="1" stroke-dasharray="20 160" opacity=".7"/>` : ''}
-        <circle class="capring" cx="${cx}" cy="${cy}" r="29" fill="none" stroke="#fff" stroke-opacity=".06" stroke-width="2"/>
-        <ellipse cx="${cx - 8}" cy="${cy - 14}" rx="16" ry="7" fill="#fff" opacity=".07"/>
+      <circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R)}" fill="url(#${id}-well)" stroke="${L(k.body, .08)}" stroke-opacity=".6" stroke-width="2"/>
+      <circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R * .81)}" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="${c(R * .07)}"/>
+      <g class="capg" id="${id}-${side}" style="transform-origin:${c(cx)}px ${c(cy)}px">
+        <circle cx="${c(cx)}" cy="${c(cy + R * .09)}" r="${c(R * .72)}" fill="#000" opacity=".6"/>
+        <circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R * .72)}" fill="url(#${id}-stick)"/>
+        <circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R * .675)}" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="${c(R * .065)}" stroke-dasharray="1.6 2.6"/>
+        <circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R * .54)}" fill="url(#${id}-capin)"/>
+        ${ring ? `<circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R * .565)}" fill="none" stroke="${ring}" stroke-width="${c(R * .055)}"/><circle cx="${c(cx)}" cy="${c(cy)}" r="${c(R * .565)}" fill="none" stroke="${L(ring, .5)}" stroke-width="1" stroke-dasharray="${c(R * .4)} ${c(R * 3)}" opacity=".7"/>` : ''}
+        <ellipse cx="${c(cx - R * .15)}" cy="${c(cy - R * .26)}" rx="${c(R * .3)}" ry="${c(R * .13)}" fill="#fff" opacity=".07"/>
       </g></g>`;
   }
-  function shoulders(id, k, meters) {
-    const trig = (src, d, hl, lx) => `<g class="k trig" data-src="${src}" id="${id}-${src}">
-      <path d="${d}" fill="url(#${id}-trig)" stroke="${D(k.trig, .6)}" stroke-width="1.5"/>
-      <path d="${hl}" fill="none" stroke="#fff" stroke-opacity="${k.trigFinish === 'chrome' ? .45 : .18}" stroke-width="3" stroke-linecap="round"/>
-      <path class="nopt" id="${id}-${src}p" d="${d}" fill="var(--acc)" opacity="0"/>
-      <text class="lbl" x="${lx}" y="92">${src.toUpperCase()}</text></g>`;
-    const bump = (src, d, edge, lx) => `<g transform="translate(0,-17)"><g class="k" data-src="${src}">
-      <path d="${d}" fill="url(#${id}-bump)" stroke="#000" stroke-width="1.5"/>
-      <path d="${edge}" fill="none" stroke="#fff" stroke-opacity="${k.trigFinish === 'chrome' ? .5 : .15}" stroke-width="2.5" stroke-linecap="round"/>
-      <text class="lbl" x="${lx}" y="124" font-size="9">${src.toUpperCase()}</text></g></g>`;
-    const m = meters ? `<g class="nopt"><rect x="172" y="24" width="128" height="7" rx="3.5" fill="#000" opacity=".35"/><rect id="${id}-m-l2" x="172" y="24" width="0" height="7" rx="3.5" fill="var(--acc)"/>
-      <rect x="500" y="24" width="128" height="7" rx="3.5" fill="#000" opacity=".35"/><rect id="${id}-m-r2" x="500" y="24" width="0" height="7" rx="3.5" fill="var(--acc)"/></g>` : '';
-    return m + trig('l2', 'M172 124 C170 80 205 52 252 50 C284 49 300 70 300 100 L298 122 Z', 'M190 104 C196 78 222 64 252 63', 245)
-      + trig('r2', 'M628 124 C630 80 595 52 548 50 C516 49 500 70 500 100 L502 122 Z', 'M610 104 C604 78 578 64 548 63', 555)
-      + bump('l1', 'M150 150 C168 118 222 100 300 101 L301 122 C240 120 192 130 166 160 Z', 'M160 146 C182 122 226 110 296 108', 232)
-      + bump('r1', 'M650 150 C632 118 578 100 500 101 L499 122 C560 120 608 130 634 160 Z', 'M640 146 C618 122 574 110 504 108', 568);
+  function shoulders(id, k, meters, G) {
+    const [[ax, ay], [bx, by]] = G.bump, dx = bx - ax;
+    const X = (x, r) => f1(r ? 800 - x : x);
+    const bumpD = r => `M${X(ax, r)} ${f1(ay + 2)} Q${X(ax + dx * .2, r)} ${f1(by - 10)} ${X(bx, r)} ${f1(by - 9)} L${X(bx + 4, r)} ${f1(by + 7)}`
+      + ` Q${X(ax + dx * .3, r)} ${f1(by + 8)} ${X(ax + 10, r)} ${f1(ay + 14)} Z`;
+    const bumpHL = r => `M${X(ax + 8, r)} ${f1(ay - 1)} Q${X(ax + dx * .25, r)} ${f1(by - 6)} ${X(bx - 6, r)} ${f1(by - 5)}`;
+    const trigD = r => `M${X(ax + 10, r)} ${f1(ay - 4)} C${X(ax + 8, r)} ${f1(by - 34)} ${X(ax + dx * .45, r)} ${f1(by - 46)} ${X(bx - dx * .2, r)} ${f1(by - 45)}`
+      + ` C${X(bx - 6, r)} ${f1(by - 44)} ${X(bx + 2, r)} ${f1(by - 30)} ${X(bx + 2, r)} ${f1(by - 8)} Z`;
+    const trigHL = r => `M${X(ax + dx * .16, r)} ${f1(by - 18)} C${X(ax + dx * .2, r)} ${f1(by - 34)} ${X(ax + dx * .45, r)} ${f1(by - 39)} ${X(bx - dx * .25, r)} ${f1(by - 38)}`;
+    const trig = (src, r) => `<g class="k trig" data-src="${src}" id="${id}-${src}">
+      <path d="${trigD(r)}" fill="url(#${id}-trig)" stroke="${D(k.trig, .6)}" stroke-width="1.5"/>
+      <path d="${trigHL(r)}" fill="none" stroke="#fff" stroke-opacity="${k.trigFinish === 'chrome' ? .45 : .18}" stroke-width="3" stroke-linecap="round"/>
+      <path class="nopt" id="${id}-${src}p" d="${trigD(r)}" fill="var(--acc)" opacity="0"/>
+      <text class="lbl" x="${X(ax + dx * .55, r)}" y="${f1(by - 22)}">${src.toUpperCase()}</text></g>`;
+    const bump = (src, r) => `<g class="k" data-src="${src}"><path d="${bumpD(r)}" fill="url(#${id}-bump)" stroke="#000" stroke-width="1.5"/>
+      <path d="${bumpHL(r)}" fill="none" stroke="#fff" stroke-opacity="${k.trigFinish === 'chrome' ? .5 : .15}" stroke-width="2.5" stroke-linecap="round"/></g>`;
+    const mw = dx * .9, mx = ax + dx * .05;
+    const m = meters ? `<g class="nopt"><rect x="${f1(mx)}" y="6" width="${f1(mw)}" height="7" rx="3.5" fill="#000" opacity=".35"/><rect id="${id}-m-l2" x="${f1(mx)}" y="6" width="0" height="7" rx="3.5" fill="var(--acc)"/>
+      <rect x="${f1(800 - mx - mw)}" y="6" width="${f1(mw)}" height="7" rx="3.5" fill="#000" opacity=".35"/><rect id="${id}-m-r2" x="${f1(800 - mx - mw)}" y="6" width="0" height="7" rx="3.5" fill="var(--acc)" data-right="1"/></g>` : '';
+    return m + trig('l2', 0) + trig('r2', 1) + bump('l1', 0) + bump('r1', 1);
   }
 
   // ---------------------------------------------------------------- build
   function svg(id, vizIn, opts) {
     opts = opts || {};
     const { viz, skin: k } = resolve(vizIn);
-    const S = SHAPES[viz.model], xbox = viz.model === 'xbox', ds5 = viz.model === 'ds5', ds4 = viz.model === 'ds4';
+    const G = geometry(viz.model), xbox = viz.model === 'xbox', ds5 = viz.model === 'ds5', ds4 = viz.model === 'ds4';
     const edge = ds5 && viz.version === 'edge';
     const u = n => `url(#${id}-${n})`;
     const glow = opts.glow !== false;
     const bodyFill = k.texture === 'camo' ? u('camo') : u('body');
-    const btnStroke = '#000';
-    let html = `<svg class="pad ehp${glow ? '' : ' noglow'}" id="${id}" viewBox="0 0 800 520" style="--acc:${k.accent};--light:${k.accent}" data-tp="${S.tp ? S.tp.join(',') : ''}">
+    const gw = G.w * .3;
+    let html = `<svg class="pad ehp${glow ? '' : ' noglow'}" id="${id}" viewBox="0 0 800 520" style="--acc:${k.accent};--light:${k.accent}"
+      data-tp="${G.tp ? G.tp.map(f1).join(',') : ''}" data-tilt="${f1(G.sR * .28)}" data-mw="${f1((G.bump[1][0] - G.bump[0][0]) * .9)}">
     <defs>
       <linearGradient id="${id}-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L(k.body, .1)}"/><stop offset=".42" stop-color="${k.body}"/><stop offset="1" stop-color="${D(k.body, .45)}"/></linearGradient>
       <linearGradient id="${id}-plate" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${L(k.center || k.body, .08)}"/><stop offset="1" stop-color="${D(k.center || k.body, .4)}"/></linearGradient>
@@ -216,66 +262,69 @@
       ${fill(id, 'btn', k.btn, k.finish)}${fill(id, 'dpad', k.dpad, k.finish)}${fill(id, 'trig', k.trig, k.trigFinish)}${fill(id, 'bump', k.trig, k.trigFinish)}
       ${fill(id, 'stick', k.stick, 'matte')}${fill(id, 'tpad', k.touch, k.touchFinish)}${fill(id, 'home', k.home, 'gloss')}
       ${textures(id, k)}
-      <filter id="${id}-sh" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity="${opts.shadow === false ? 0 : .7}"/></filter>
+      <filter id="${id}-sh" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".7"/></filter>
       <filter id="${id}-glow" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="6"/></filter>
-      <clipPath id="${id}-clip"><path d="${S.body}"/></clipPath>
-      ${S.touch ? `<clipPath id="${id}-tpclip"><path d="${S.touch}"/></clipPath>` : ''}
+      <clipPath id="${id}-clip"><path d="${G.body}"/></clipPath>
+      ${G.touch ? `<clipPath id="${id}-tpclip"><path d="${G.touch}"/></clipPath>` : ''}
     </defs>`;
-    html += shoulders(id, k, opts.meters);
-    if (ds4 && viz.version === 'v1') html += `<path class="nopt" d="M318 99 L482 99" stroke-width="10" stroke-linecap="round" filter="${u('glow')}" style="stroke:var(--light)" opacity=".8"/>`;
+    html += shoulders(id, k, opts.meters, G);
+    if (ds4 && viz.version === 'v1') html += `<path class="nopt" d="M${f1(G.light[0][0])} ${f1(G.light[0][1] - 4)} L${f1(G.light[1][0])} ${f1(G.light[1][1] - 4)}" stroke-width="10" stroke-linecap="round" filter="${u('glow')}" style="stroke:var(--light)" opacity=".8"/>`;
     // shell
-    html += `<path d="${S.body}" fill="${bodyFill}" ${opts.shadow === false ? '' : `filter="${u('sh')}"`}/>
-      ${k.texture === 'carbon' ? `<path class="nopt" d="${S.body}" fill="${u('carbon')}" opacity=".9"/><path class="nopt" d="${S.body}" fill="${u('body')}" opacity=".35"/>` : ''}
-      ${k.texture === 'grain' ? `<path class="nopt" d="${S.body}" fill="${u('grain')}"/>` : ''}
-      ${S.plate && k.center ? `<path class="nopt" d="${S.plate}" fill="${u('plate')}"/>` : ''}
-      ${k.gripTex ? `<g clip-path="${u('clip')}" class="nopt"><path d="${S.grips}" fill="${u('gripdots')}"/><path d="${S.grips}" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="2"/></g>` : ''}
-      <path class="nopt" d="${S.body}" fill="${u('sheen')}"/>
-      <path class="nopt" d="${S.body}" fill="none" stroke="${lum(k.body) > .5 ? '#00000033' : '#ffffff1f'}" stroke-width="1.5"/>`;
+    html += `<path d="${G.body}" fill="${bodyFill}" ${opts.shadow === false ? '' : `filter="${u('sh')}"`}/>
+      ${k.texture === 'carbon' ? `<path class="nopt" d="${G.body}" fill="${u('carbon')}" opacity=".9"/><path class="nopt" d="${G.body}" fill="${u('body')}" opacity=".35"/>` : ''}
+      ${k.texture === 'grain' ? `<path class="nopt" d="${G.body}" fill="${u('grain')}"/>` : ''}
+      ${G.plate && k.center ? `<path class="nopt" d="${G.plate}" fill="${u('plate')}"/>` : ''}
+      ${k.gripTex ? `<g clip-path="${u('clip')}" class="nopt"><path d="M0 ${f1(G.gripY)} H${f1(400 - gw)} V520 H0 Z M800 ${f1(G.gripY)} H${f1(400 + gw)} V520 H800 Z" fill="${u('gripdots')}"/>
+          <path d="M0 ${f1(G.gripY)} H${f1(400 - gw)} M800 ${f1(G.gripY)} H${f1(400 + gw)}" stroke="#000" stroke-opacity=".35" stroke-width="2"/></g>` : ''}
+      <path class="nopt" d="${G.body}" fill="${u('sheen')}"/>
+      <path class="nopt" d="${G.body}" fill="none" stroke="${lum(k.body) > .5 ? '#00000033' : '#ffffff1f'}" stroke-width="1.5"/>`;
     // light + touchpad
-    if (S.touch) {
-      if (ds4 && viz.version === 'v2') html += `<path class="nopt" d="M316 96 L484 96" stroke-width="12" stroke-linecap="round" filter="${u('glow')}" opacity=".9" style="stroke:var(--light)"/><path class="nopt" d="M316 96 L484 96" stroke-width="5" stroke-linecap="round" style="stroke:var(--light)"/>`;
-      html += `<g class="k" data-src="touch"><path d="${S.touch}" fill="${u('tpad')}" stroke="#000" stroke-width="2"/>
-        ${k.touchFinish === 'brushed' ? `<path d="${S.touch}" fill="${u('hair')}" class="nopt"/>` : ''}
-        <path d="${S.touch}" fill="none" stroke="#fff" stroke-opacity="${k.touchFinish === 'brushed' ? .25 : .06}" stroke-width="1.5" class="nopt" transform="translate(0,1.5)"/>
-        <g clip-path="${u('tpclip')}" id="${id}-touch"></g></g>`;
-      if (ds5) {
-        const [x, y, w, h] = S.tp;
-        html += `<g class="nopt"><path d="M${x + 2} ${y + 10} L${x + 6} ${y + h - 10}" stroke-width="10" stroke-linecap="round" filter="${u('glow')}" style="stroke:var(--light)" opacity=".9"/>
-          <path d="M${x + w - 2} ${y + 10} L${x + w - 6} ${y + h - 10}" stroke-width="10" stroke-linecap="round" filter="${u('glow')}" style="stroke:var(--light)" opacity=".9"/>
-          <path d="M${x + 2} ${y + 10} L${x + 6} ${y + h - 10} M${x + w - 2} ${y + 10} L${x + w - 6} ${y + h - 10}" stroke-width="3.5" stroke-linecap="round" style="stroke:var(--light)"/></g>`;
+    if (G.touch) {
+      if (ds4 && viz.version === 'v2') {
+        const [a, b] = G.light;
+        html += `<path class="nopt" d="M${f1(a[0])} ${f1(a[1])} L${f1(b[0])} ${f1(b[1])}" stroke-width="12" stroke-linecap="round" filter="${u('glow')}" opacity=".9" style="stroke:var(--light)"/><path class="nopt" d="M${f1(a[0])} ${f1(a[1])} L${f1(b[0])} ${f1(b[1])}" stroke-width="5" stroke-linecap="round" style="stroke:var(--light)"/>`;
       }
+      html += `<g class="k" data-src="touch"><path d="${G.touch}" fill="${u('tpad')}" stroke="#000" stroke-width="2"/>
+        ${k.touchFinish === 'brushed' ? `<path d="${G.touch}" fill="${u('hair')}" class="nopt"/>` : ''}
+        <path d="${G.touch}" fill="none" stroke="#fff" stroke-opacity="${k.touchFinish === 'brushed' ? .25 : .06}" stroke-width="1.5" class="nopt" transform="translate(0,1.5)"/>
+        <g clip-path="${u('tpclip')}" id="${id}-touch"></g></g>`;
+      if (G.strips) G.strips.forEach(([a, b]) => {
+        html += `<path class="nopt" d="M${f1(a[0])} ${f1(a[1])} L${f1(b[0])} ${f1(b[1])}" stroke-width="9" stroke-linecap="round" filter="${u('glow')}" style="stroke:var(--light)" opacity=".9"/>
+          <path class="nopt" d="M${f1(a[0])} ${f1(a[1])} L${f1(b[0])} ${f1(b[1])}" stroke-width="3" stroke-linecap="round" style="stroke:var(--light)"/>`;
+      });
     }
     // d-pad + face buttons
-    html += xbox ? xbDpad(id, k, ...S.dpad) : psDpad(id, k, ...S.dpad);
-    const [fx, fy] = S.face, sp = xbox ? 40 : 46;
-    html += `<circle class="nopt" cx="${fx}" cy="${fy}" r="${xbox ? 66 : 74}" fill="${u('well')}" opacity="${xbox ? .5 : .85}"/>`
-      + faceButton(id, k, 'triangle', fx, fy - sp, xbox ? 21 : 23, xbox) + faceButton(id, k, 'circle', fx + sp, fy, xbox ? 21 : 23, xbox)
-      + faceButton(id, k, 'cross', fx, fy + sp, xbox ? 21 : 23, xbox) + faceButton(id, k, 'square', fx - sp, fy, xbox ? 21 : 23, xbox);
+    html += xbox ? xbDpad(id, k, ...G.dpad, G.dL, G.dW) : psDpad(id, k, ...G.dpad, G.dL, G.dW);
+    const [fx, fy] = G.face, sp = G.fS, r = G.fR;
+    html += `<circle class="nopt" cx="${f1(fx)}" cy="${f1(fy)}" r="${f1(sp + r + 8)}" fill="${u('well')}" opacity="${xbox ? .45 : .85}"/>`
+      + faceButton(id, k, 'triangle', fx, fy - sp, r, xbox) + faceButton(id, k, 'circle', fx + sp, fy, r, xbox)
+      + faceButton(id, k, 'cross', fx, fy + sp, r, xbox) + faceButton(id, k, 'square', fx - sp, fy, r, xbox);
     // small buttons
-    const pill = (src, x, y, rot, w = 13, h = 30) => `<g class="k" data-src="${src}"><rect x="${x - w / 2}" y="${y - h / 2}" width="${w}" height="${h}" rx="${w / 2}" fill="${u('btn')}" stroke="${btnStroke}" stroke-width="1.5" transform="rotate(${rot} ${x} ${y})"/></g>`;
     if (xbox) {
-      const [hx2, hy] = S.home;
-      html += `<g class="k" data-src="ps"><circle cx="${hx2}" cy="${hy}" r="23" fill="${u('home')}" stroke="#000" stroke-width="1.5"/>
-          <circle cx="${hx2}" cy="${hy}" r="23" fill="none" stroke-width="2.5" style="stroke:var(--light)" opacity=".9"/>
-          <circle cx="${hx2}" cy="${hy}" r="23" fill="none" stroke-width="8" filter="${u('glow')}" style="stroke:var(--light)" opacity=".5" class="nopt"/>
-          <circle cx="${hx2}" cy="${hy}" r="9" fill="none" stroke="#ffffff55" stroke-width="2" class="nopt"/></g>
-        <g class="k" data-src="share"><circle cx="${S.share[0]}" cy="${S.share[1]}" r="12" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/><path d="M${S.share[0] - 5} ${S.share[1] - 3} h7 v6 h-7z M${S.share[0] - 2} ${S.share[1] - 5} h7 v6" fill="none" stroke="#ffffff66" stroke-width="1.2" class="nopt"/></g>
-        <g class="k" data-src="options"><circle cx="${S.options[0]}" cy="${S.options[1]}" r="12" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/><path d="M${S.options[0] - 5} ${S.options[1] - 4} h10 M${S.options[0] - 5} ${S.options[1]} h10 M${S.options[0] - 5} ${S.options[1] + 4} h10" stroke="#ffffff66" stroke-width="1.4" class="nopt"/></g>
-        ${viz.version === 'series' ? pill('touch', 400, 240, 90, 11, 22) : ''}`;
+      const [hx2, hy] = G.home, hr = G.hR, sm = G.small;
+      html += `<g class="k" data-src="ps"><circle cx="${f1(hx2)}" cy="${f1(hy)}" r="${f1(hr)}" fill="${u('home')}" stroke="#000" stroke-width="1.5"/>
+          <circle cx="${f1(hx2)}" cy="${f1(hy)}" r="${f1(hr)}" fill="none" stroke-width="2.5" style="stroke:var(--light)" opacity=".9"/>
+          <circle cx="${f1(hx2)}" cy="${f1(hy)}" r="${f1(hr)}" fill="none" stroke-width="8" filter="${u('glow')}" style="stroke:var(--light)" opacity=".5" class="nopt"/>
+          <circle cx="${f1(hx2)}" cy="${f1(hy)}" r="${f1(hr * .4)}" fill="none" stroke="#ffffff55" stroke-width="2" class="nopt"/></g>`;
+      const [sx, sy] = G.share, [ox, oy] = G.options;
+      html += `<g class="k" data-src="share"><circle cx="${f1(sx)}" cy="${f1(sy)}" r="${f1(sm)}" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/><path d="M${f1(sx - 5)} ${f1(sy - 2)} h6 v5 h-6z M${f1(sx - 2)} ${f1(sy - 5)} h6 v5" fill="none" stroke="#ffffff66" stroke-width="1.2" class="nopt"/></g>
+        <g class="k" data-src="options"><circle cx="${f1(ox)}" cy="${f1(oy)}" r="${f1(sm)}" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/><path d="M${f1(ox - 5)} ${f1(oy - 4)} h10 M${f1(ox - 5)} ${f1(oy)} h10 M${f1(ox - 5)} ${f1(oy + 4)} h10" stroke="#ffffff66" stroke-width="1.4" class="nopt"/></g>`;
+      if (viz.version === 'series') { const [qx, qy] = G.sharebtn; html += `<g class="k" data-src="touch"><rect x="${f1(qx - sm * .9)}" y="${f1(qy - sm * .55)}" width="${f1(sm * 1.8)}" height="${f1(sm * 1.1)}" rx="${f1(sm * .55)}" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/></g>`; }
     } else {
-      html += pill('share', ...S.share) + pill('options', ...S.options)
-        + `<text class="lbl" x="${S.share[0] - 12}" y="${S.share[1] + 33}" font-size="8">${ds5 ? 'CREATE' : 'SHARE'}</text><text class="lbl" x="${S.options[0] + 14}" y="${S.options[1] + 33}" font-size="8">OPTIONS</text>`;
-      if (S.grille) html += `<g class="nopt" fill="#000" opacity=".8">${[...Array(15)].map((_, i) => `<circle cx="${S.grille[0] - 16 + (i % 5) * 8}" cy="${S.grille[1] - 7 + Math.floor(i / 5) * 7}" r="1.8"/>`).join('')}</g>`;
-      const [hx2, hy] = S.home;
-      html += `<g class="k" data-src="ps"><circle cx="${hx2}" cy="${hy}" r="${ds5 ? 15 : 18}" fill="${u('home')}" stroke="#000" stroke-width="1.5"/>
-          <circle cx="${hx2}" cy="${hy}" r="${ds5 ? 15 : 18}" fill="none" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.2"/>
-          <path class="nopt" d="M${hx2 - 6} ${hy + 1} l6 -6 l6 6 M${hx2 - 4} ${hy - 1} v6 h8 v-6" fill="none" stroke="#ffffff66" stroke-width="1.4" stroke-linejoin="round"/></g>`;
-      if (ds5) html += `<rect class="nopt" x="388" y="${hy + 24}" width="24" height="8" rx="4" fill="${u('btn')}" stroke="#000"/>`;
-      if (edge) html += `<rect class="nopt" x="282" y="372" width="36" height="9" rx="4.5" fill="${u('btn')}" stroke="#000"/><rect class="nopt" x="482" y="372" width="36" height="9" rx="4.5" fill="${u('btn')}" stroke="#000"/>`;
-      if (ds4) html += `<rect class="nopt" x="378" y="362" width="44" height="9" rx="4" fill="#050506" stroke="${L(k.body, .1)}" stroke-opacity=".4"/>`;
+      const [pw, ph] = G.pill;
+      const pill = (src, x, y, rt) => `<g class="k" data-src="${src}"><rect x="${f1(x - pw / 2)}" y="${f1(y - ph / 2)}" width="${f1(pw)}" height="${f1(ph)}" rx="${f1(pw / 2)}" fill="${u('btn')}" stroke="#000" stroke-width="1.5" transform="rotate(${rt} ${f1(x)} ${f1(y)})"/></g>`;
+      html += pill('share', ...G.share) + pill('options', ...G.options);
+      if (G.grille) html += `<g class="nopt" fill="#000" opacity=".8">${[...Array(15)].map((_, i) => `<circle cx="${f1(G.grille[0] - 14 + (i % 5) * 7)}" cy="${f1(G.grille[1] - 6 + Math.floor(i / 5) * 6)}" r="1.6"/>`).join('')}</g>`;
+      const [hx2, hy] = G.home, hr = G.hR;
+      html += `<g class="k" data-src="ps"><circle cx="${f1(hx2)}" cy="${f1(hy)}" r="${f1(hr)}" fill="${u('home')}" stroke="#000" stroke-width="1.5"/>
+          <circle cx="${f1(hx2)}" cy="${f1(hy)}" r="${f1(hr)}" fill="none" stroke="var(--acc)" stroke-opacity=".55" stroke-width="1.2"/>
+          <path class="nopt" d="M${f1(hx2 - hr * .4)} ${f1(hy + hr * .05)} l${f1(hr * .4)} ${f1(-hr * .4)} l${f1(hr * .4)} ${f1(hr * .4)} M${f1(hx2 - hr * .27)} ${f1(hy - hr * .07)} v${f1(hr * .4)} h${f1(hr * .54)} v${f1(-hr * .4)}" fill="none" stroke="#ffffff66" stroke-width="1.3" stroke-linejoin="round"/></g>`;
+      if (G.mute) html += `<rect class="nopt" x="${f1(G.mute[0] - 13)}" y="${f1(G.mute[1] - 4)}" width="26" height="8" rx="4" fill="${u('btn')}" stroke="#000"/>`;
+      if (edge) G.fn.forEach(([x, y]) => { html += `<rect class="nopt" x="${f1(x - 16)}" y="${f1(y - 4)}" width="32" height="8" rx="4" fill="${u('btn')}" stroke="#000"/>`; });
+      if (G.port) html += `<rect class="nopt" x="${f1(G.port[0] - 22)}" y="${f1(G.port[1] - 5)}" width="44" height="9" rx="4" fill="#050506" stroke="${L(k.body, .1)}" stroke-opacity=".4"/>`;
     }
     // sticks
-    html += stick(id, k, 'l3', ...S.sticks[0], 'ls', edge) + stick(id, k, 'r3', ...S.sticks[1], 'rs', edge);
+    html += stick(id, k, 'l3', ...G.sticks[0], G.sR, 'ls', edge) + stick(id, k, 'r3', ...G.sticks[1], G.sR, 'rs', edge);
     return html + '</svg>';
   }
 
@@ -287,13 +336,13 @@
     if (light) el.style.setProperty('--light', light);
     if (!S || !S.connected) return;
     const tilt = (side, x, y, pressed) => { const c = el.querySelector('#' + id + '-' + side); if (!c) return;
-      c.style.transform = `translate(${(x - 127.5) / 127.5 * 15}px,${(y - 127.5) / 127.5 * 15}px) scale(${pressed ? .93 : 1})`; };
+      const tl = +el.dataset.tilt || 15; c.style.transform = `translate(${(x - 127.5) / 127.5 * tl}px,${(y - 127.5) / 127.5 * tl}px) scale(${pressed ? .93 : 1})`; };
     tilt('ls', S.lx, S.ly, b.l3); tilt('rs', S.rx, S.ry, b.r3);
     for (const t of ['l2', 'r2']) {
       const v = (t === 'l2' ? S.l2v : S.r2v) / 255;
       const g = el.querySelector('#' + id + '-' + t); if (g) g.style.transform = `translateY(${v * 12}px) scaleY(${1 - v * .12})`;
       const p = el.querySelector('#' + id + '-' + t + 'p'); if (p) p.setAttribute('opacity', v * .5);
-      const m = el.querySelector('#' + id + '-m-' + t); if (m) m.setAttribute('width', 128 * v);
+      const m = el.querySelector('#' + id + '-m-' + t); if (m) { const mw = +el.dataset.mw || 128; m.setAttribute('width', mw * v); if (m.dataset.right) m.setAttribute('x', +m.previousElementSibling.getAttribute('x') + mw * (1 - v)); }
     }
     const tg = el.querySelector('#' + id + '-touch');
     if (tg) {
