@@ -30,8 +30,11 @@ WHAT IT DOES
   - Games see an Xbox or a PlayStation controller (your choice)
 
 STREAM OVERLAY (OBS)
-  Visualizer & OBS page -> pick a model + skin -> Copy link.
+  Visualizer & OBS page -> pick a photo skin (PS5, Xbox, or "Add your own photo"
+  to use a picture of your own controller) -> Copy link.
   In OBS: Sources -> + -> Browser, paste the link, Width 800, Height 520.
+  Built-in photos: DualSense by Chris Woodrich, Xbox controller by uKER,
+  both CC BY-SA 4.0 via Wikimedia Commons.
 
 TIPS
   - If a game reacts twice to each press, it's seeing your real controller AND

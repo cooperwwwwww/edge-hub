@@ -1028,6 +1028,72 @@ fn restore(sh: &Arc<Shared>, o: &Value) -> Value {
 const PAD_JS: &str = include_str!("../../ui/pad.js");
 const OVERLAY_HTML: &str = include_str!("../../ui/overlay.html");
 
+// ------------------------------------------------------------------ photo skins (real controller pictures)
+
+const PHOTO_PS5: &[u8] = include_bytes!("../../ui/photos/ps5.png");
+const PHOTO_XBOX: &[u8] = include_bytes!("../../ui/photos/xbox.png");
+fn photos_dir() -> PathBuf { data_dir().join("photos") }
+fn photo_id(s: &str) -> Option<String> {
+    let s = s.trim().to_ascii_lowercase();
+    (!s.is_empty() && s.len() <= 40 && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')).then_some(s)
+}
+/// "/photo/<id>.png" -> image bytes (built-ins first, then the user's own photos)
+fn photo_png(path: &str) -> Option<Vec<u8>> {
+    let id = photo_id(path.rsplit('/').next()?.strip_suffix(".png")?)?;
+    match id.as_str() {
+        "ps5" => Some(PHOTO_PS5.to_vec()),
+        "xbox" => Some(PHOTO_XBOX.to_vec()),
+        _ => fs::read(photos_dir().join(format!("{id}.png"))).ok(),
+    }
+}
+fn list_photos() -> Value {
+    let mut out = vec![];
+    if let Ok(rd) = fs::read_dir(photos_dir()) {
+        for e in rd.flatten() {
+            let p = e.path();
+            if p.extension().and_then(|x| x.to_str()) != Some("json") { continue; }
+            let stem = p.file_stem().and_then(|x| x.to_str()).unwrap_or("").to_string();
+            let Ok(txt) = fs::read_to_string(&p) else { continue };
+            let Ok(mut m) = serde_json::from_str::<Value>(&txt) else { continue };
+            if m["id"].as_str() != Some(stem.as_str()) || !photos_dir().join(format!("{stem}.png")).exists() { continue; }
+            m["user"] = json!(true);
+            out.push(m);
+        }
+    }
+    out.sort_by(|a, b| a["name"].as_str().unwrap_or("").cmp(b["name"].as_str().unwrap_or("")));
+    json!(out)
+}
+fn b64_decode(s: &str) -> Option<Vec<u8>> {
+    let val = |c: u8| -> Option<u32> { Some(match c { b'A'..=b'Z' => c - b'A', b'a'..=b'z' => c - b'a' + 26, b'0'..=b'9' => c - b'0' + 52, b'+' | b'-' => 62, b'/' | b'_' => 63, _ => return None } as u32) };
+    let bytes: Vec<u8> = s.bytes().filter(|c| !c.is_ascii_whitespace() && *c != b'=').collect();
+    let mut out = Vec::with_capacity(bytes.len() * 3 / 4);
+    for ch in bytes.chunks(4) {
+        let mut n = 0u32;
+        for (i, c) in ch.iter().enumerate() { n |= val(*c)? << (18 - 6 * i); }
+        out.push((n >> 16) as u8);
+        if ch.len() > 2 { out.push((n >> 8) as u8); }
+        if ch.len() > 3 { out.push(n as u8); }
+    }
+    Some(out)
+}
+fn save_photo(meta: &Value, data_url: &str) -> Result<Value, String> {
+    let id = meta["id"].as_str().and_then(photo_id).ok_or("bad photo id")?;
+    if id == "ps5" || id == "xbox" { return Err("that name is taken by a built-in photo".into()); }
+    fs::create_dir_all(photos_dir()).map_err(|e| e.to_string())?;
+    if !data_url.is_empty() {
+        let b64 = data_url.strip_prefix("data:image/png;base64,").ok_or("photo must be a PNG")?;
+        let png = b64_decode(b64).ok_or("photo data is damaged")?;
+        if png.len() < 8 || &png[..8] != b"\x89PNG\r\n\x1a\n" { return Err("photo must be a PNG".into()); }
+        if png.len() > 12 * 1024 * 1024 { return Err("photo is too big (12 MB max)".into()); }
+        fs::write(photos_dir().join(format!("{id}.png")), png).map_err(|e| e.to_string())?;
+    }
+    let mut m = meta.clone();
+    m["id"] = json!(id);
+    if let Some(o) = m.as_object_mut() { o.remove("url"); o.remove("user"); }
+    fs::write(photos_dir().join(format!("{id}.json")), serde_json::to_string_pretty(&m).unwrap_or_default()).map_err(|e| e.to_string())?;
+    Ok(list_photos())
+}
+
 fn overlay_port(sh: &Shared) -> u16 {
     lock(&sh.settings).get("overlay_port").and_then(|v| v.as_u64()).filter(|p| *p >= 1024 && *p < 65535).unwrap_or(8650) as u16
 }
@@ -1067,8 +1133,16 @@ fn overlay_client(sh: Arc<Shared>, mut st: std::net::TcpStream) {
         "/pad.js" => send(&mut st, "application/javascript; charset=utf-8", PAD_JS.as_bytes()),
         "/config" => {
             let viz = lock(&sh.settings).get("viz").cloned().unwrap_or(json!({}));
-            send(&mut st, "application/json", json!({"viz": viz}).to_string().as_bytes());
+            send(&mut st, "application/json", json!({"viz": viz, "photos": list_photos()}).to_string().as_bytes());
         }
+        p if p.starts_with("/photo/") => match photo_png(p) {
+            Some(png) => send(&mut st, "image/png", &png),
+            None => { let _ = st.write_all(b"HTTP/1.1 404 Not Found
+Content-Length: 0
+Connection: close
+
+"); }
+        },
         "/events" => {
             let head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: keep-alive\r\n\r\n";
             if st.write_all(head.as_bytes()).is_err() { return; }
@@ -1240,7 +1314,7 @@ fn get_init(sh: &Shared) -> Value {
         "profiles": names(sh), "current": cur, "profile": profile(sh, &cur), "sources": SOURCES, "targets": TARGETS,
         "settings": lock(&sh.settings).clone(), "driver": driver_status(), "data_dir": data_dir().display().to_string(),
         "native": true, "version": VERSION, "recent_apps": lock(&sh.recent_apps).clone(), "devices": devices_json(sh),
-        "overlay_url": overlay_url(sh),
+        "overlay_url": overlay_url(sh), "photos": list_photos(),
     })
 }
 
@@ -1320,6 +1394,15 @@ fn api_call(sh: &Arc<Shared>, m: &str, a: &[Value], proxy: &tao::event_loop::Eve
             let u = s0();
             if u.starts_with("http://127.0.0.1:") { let _ = Command::new("cmd").args(["/c", "start", "", &u]).creation_flags(NO_WINDOW).spawn(); }
             Value::Null
+        }
+        "list_photos" => list_photos(),
+        "save_photo" => save_photo(&arg(0), arg(1).as_str().unwrap_or(""))?,
+        "delete_photo" => {
+            if let Some(id) = photo_id(&s0()) {
+                let _ = fs::remove_file(photos_dir().join(format!("{id}.png")));
+                let _ = fs::remove_file(photos_dir().join(format!("{id}.json")));
+            }
+            list_photos()
         }
         "hidhide_status" => hidhide_status(sh),
         "hidhide_set" => hidhide_set(sh, arg(0).as_bool().unwrap_or(false)),
@@ -1485,6 +1568,12 @@ fn main() {
     let ipc_proxy = proxy.clone();
     let webview = WebViewBuilder::new_with_web_context(&mut ctx)
         .with_custom_protocol("edgehub".into(), move |_id, req| {
+            if req.uri().path().starts_with("/photo/") {
+                return match photo_png(req.uri().path()) {
+                    Some(png) => Response::builder().header("Content-Type", "image/png").body(Cow::Owned(png)).unwrap(),
+                    None => Response::builder().status(404).body(Cow::Borrowed(&b""[..])).unwrap(),
+                };
+            }
             if req.uri().path().ends_with("/pad.js") {
                 return Response::builder().header("Content-Type", "application/javascript; charset=utf-8").body(Cow::Borrowed(PAD_JS.as_bytes())).unwrap();
             }

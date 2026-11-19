@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Edge Hub</title>
-<script src="pad.js"></script>
+<script src="pad.js?v=23"></script>
 <style>
 :root{
   --bg:#0b0b0f; --panel:#14141b; --panel2:#1b1b24; --line:#262632; --text:#ecebf2; --muted:#8b8a99;
@@ -142,6 +142,20 @@ ol.steps2{margin:10px 0;padding-left:20px;line-height:1.7;color:var(--muted)} ol
 .shakestat{padding:8px 12px;border-radius:9px;font-size:13px;margin-top:8px}
 .shakestat.on{background:#2fd27a18;color:#9ff0c4;border:1px solid #2fd27a44} .shakestat.off{background:var(--panel2);color:var(--muted)}
 .modal{position:fixed;inset:0;background:#000a;display:none;place-items:center;z-index:100}
+.photogrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.pcard{position:relative;display:flex;flex-direction:column;align-items:center;gap:4px;padding:10px 8px 9px;border-radius:12px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;color:var(--text);font:inherit;text-align:center}
+.pcard:hover{border-color:#ffffff30} .pcard.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.pcard svg{width:100%;height:104px} .pcard b{font-size:13px} .pcard .badge{position:absolute;top:7px;left:7px}
+.pcard .pact{display:flex;gap:6px} .btn.sm{padding:4px 9px;font-size:12px}
+.pcard.padd{justify-content:center;border-style:dashed;min-height:150px} .pcard.padd span:first-child{font-size:34px;line-height:1;color:var(--accent)}
+.pbox{width:980px;max-width:96vw;max-height:94vh;display:flex;flex-direction:column}
+#pestage{flex:1;min-height:300px;border-radius:12px;background:repeating-conic-gradient(#24242c 0% 25%, #1b1b22 0% 50%) 50% / 22px 22px;display:grid;place-items:center;overflow:hidden;margin-top:10px}
+#pestage svg{width:100%;max-height:58vh;touch-action:none;cursor:crosshair}
+.peempty{padding:60px 20px;text-align:center;color:var(--text)}
+.pem{fill:#ff2a3d22;stroke:#ffffffb0;stroke-width:2;vector-effect:non-scaling-stroke;cursor:move} .pem.sel{fill:#ff2a3d55;stroke:#ff2a3d;stroke-width:3}
+.pem.well{fill:none;stroke:#ffffff50;stroke-dasharray:5 4} .nopt{pointer-events:none}
+#pechips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px} #pechips button{padding:4px 9px;border-radius:7px;border:1px solid var(--line);background:var(--panel2);color:var(--text);font:inherit;font-size:12px;cursor:pointer}
+#pechips button.on{border-color:var(--accent);background:#ff2a3d22}
 .modal.on{display:grid}
 .mbox{width:460px;max-width:92vw;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 20px 60px #000}
 #cmods label{flex:none;display:flex;align-items:center;gap:6px;padding:7px 12px;border-radius:9px;background:var(--panel2);border:1px solid var(--line);cursor:pointer;color:var(--text)}
@@ -467,8 +481,10 @@ textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-sel
     <div class="grid" style="align-content:start">
       <div class="card"><h3>Live preview <span class="sub"><span class="seg" id="vbgprev"><button data-pb="check" class="on">Checker</button><button data-pb="dark">Dark</button><button data-pb="light">Light</button></span></span></h3>
         <div id="vizprev" class="vizprev check"></div></div>
-      <div class="card"><h3>Controller model</h3><div class="modelgrid" id="vmodels"></div>
-        <div class="row" style="margin-top:12px"><span class="muted small" style="flex:0 0 60px">Version</span><div class="chips" id="vversions" style="margin:0"></div></div></div>
+      <div class="card"><h3>Look <span class="sub"><span class="seg" id="vstyle"><button data-st="photo">Real photo</button><button data-st="drawn">Drawn</button></span></span></h3>
+        <div id="vc-photos"><div class="photogrid" id="vphotos"></div><div class="muted small" id="vphotocred" style="margin-top:8px"></div></div>
+        <div id="vc-drawn"><h3 style="margin:14px 0 8px;font-size:14px">Controller model</h3><div class="modelgrid" id="vmodels"></div>
+        <div class="row" style="margin-top:12px"><span class="muted small" style="flex:0 0 60px">Version</span><div class="chips" id="vversions" style="margin:0"></div></div></div></div>
       <div class="card big"><h3>Stream overlay for OBS <span class="sub">live · transparent · updates when you change skins</span></h3>
         <div class="row" style="margin-top:0"><input type="text" id="ovurl" readonly class="mono"><button class="btn pri" id="ovcopy">Copy link</button><button class="btn" id="ovopen">Open</button></div>
         <ol class="steps2"><li>In OBS: <b>Sources → + → Browser</b>, name it, click OK.</li><li>Paste the link into <b>URL</b> and set <b>Width 800</b>, <b>Height 520</b>.</li><li>Click OK, then drag and resize it on your scene. Edge Hub just has to be running (the tray is fine).</li></ol>
@@ -477,12 +493,17 @@ textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-sel
         <div class="row"><label>Press glow</label><label class="tog"><input type="checkbox" data-ov="glow"><span></span></label></div>
         <div class="row"><label>Drop shadow</label><label class="tog"><input type="checkbox" data-ov="shadow"><span></span></label></div>
         <div class="row"><label>Background</label><div class="seg" id="ovbg"><button data-bg="transparent">Transparent</button><button data-bg="green">Green screen</button><button data-bg="dark">Dark</button></div></div>
-        <div class="muted small">Two overlays with different looks? Add <span class="mono">?skin=gold</span> or <span class="mono">?model=xbox&amp;version=one</span> to the end of the link for that source.</div>
+        <div class="muted small">Two overlays with different looks? Add <span class="mono">?photo=xbox</span>, <span class="mono">?skin=gold</span> or <span class="mono">?model=xbox&amp;version=one</span> to the end of the link for that source.</div>
       </div>
     </div>
     <div class="grid" style="align-content:start">
-      <div class="card"><h3>Skins <span class="sub" id="vskincount"></span></h3><div class="skingrid" id="vskins"></div></div>
-      <div class="card"><h3>Customize <span class="sub">change any part of the current skin</span></h3><div id="vcustom"></div>
+      <div class="card" id="vc-popts"><h3>Photo skin</h3>
+        <div class="row" style="margin-top:0"><label>Press glow color</label><input type="color" id="vpacc"><button class="btn sm" id="vpaccreset">Default</button></div>
+        <div class="muted small">Every button on the photo lights up in this color when you press it, the sticks move, and L2 / R2 fill up.</div>
+        <div class="row"><button class="btn pri" id="vpadd">Add your own photo</button></div>
+        <div class="muted small">Take a picture of your controller straight from the front on a plain background. Edge Hub cuts it out and lines every button up for you.</div></div>
+      <div class="card" id="vc-skins"><h3>Skins <span class="sub" id="vskincount"></span></h3><div class="skingrid" id="vskins"></div></div>
+      <div class="card" id="vc-custom"><h3>Customize <span class="sub">change any part of the current skin</span></h3><div id="vcustom"></div>
         <div class="row"><button class="btn" id="vreset">Reset to skin</button></div></div>
     </div>
   </div>
@@ -578,6 +599,18 @@ textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-sel
   </main>
 </div>
 <div class="toast" id="toast"></div>
+<div class="modal" id="photomodal"><div class="mbox pbox">
+  <h3 style="margin:0 0 4px">Your controller photo</h3>
+  <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:10px">
+    <span id="pefilewrap" style="display:contents"><input type="file" id="pefile" accept="image/*"><label class="cf" style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="pebg" checked> Remove plain background</label></span>
+    <input type="text" id="pename" placeholder="Name" style="flex:1;min-width:140px">
+    <select id="petpl"><option value="ds4">PS4 layout</option><option value="ds5">PS5 layout</option><option value="xbox">Xbox layout</option></select>
+  </div>
+  <div id="pestage"></div>
+  <div id="petools"><div class="row" style="margin-top:8px"><span class="muted small">Selected: <b id="peselname"></b> &middot; drag it onto the button, scroll or use the buttons to resize, arrow keys to nudge</span><div class="spacer"></div><button class="btn sm" id="pesmall">Smaller</button><button class="btn sm" id="pebig">Bigger</button></div>
+    <div id="pechips"></div></div>
+  <div class="row" style="margin-top:12px"><span class="muted small">Your photo stays on this PC.</span><div class="spacer"></div><button class="btn" id="pecancel">Cancel</button><button class="btn pri" id="pesave">Save photo skin</button></div>
+</div></div>
 <div class="modal" id="combomodal"><div class="mbox">
   <h3 style="margin:0 0 6px">Custom key combo</h3>
   <div class="muted small">Tick the keys to hold, then pick the main key. Or click the box below and press the combo on your keyboard.</div>
@@ -609,14 +642,16 @@ const PAGES = [
 let api = null, INIT = null, P = null, S = {connected:false}, side = 'left', selSrc = 'cross';
 
 /* ---------------- mock api for browser preview ---------------- */
+let mockPhotos = [];
 function mockApi(){
+  if (window.EHPad) { EHPad.PHOTOS.ps5.url = 'photos/ps5.png'; EHPad.PHOTOS.xbox.url = 'photos/xbox.png'; }
   const prof = () => ({name:'Default',color:'#ff2a3d',map:{cross:'A',circle:'B',square:'X',triangle:'Y',l1:'LB',r1:'RB',l2:'LT',r2:'RT',l3:'LS',r3:'RS',share:'BACK',options:'START',ps:'GUIDE',touch:'BACK',up:'UP',down:'DOWN',left:'LEFT',right:'RIGHT'},turbo:{},turbo_rate:12,
     sticks:{left:st(),right:st()},swap_sticks:false,toggle:{},games:['cod.exe'],mouse:{stick:'none',speed:1400,accel:1.6,touchpad:false,touch_sens:1},triggers:{left:tr(),right:tr()},rumble:{intensity:1,swap:false},gyro:{enabled:false,mode:'hold_l2',sens:1,invx:false,invy:false},macros:[],light:{battery:false,brightness:1,mode:'static',speed:1}});
   const st = () => ({shape:'radial',inner:.06,inner_x:.06,inner_y:.06,outer:.98,curve:'linear',points:[[.25,.25],[.5,.5],[.75,.75]],y0:0,y1:1,smooth:false,sens:1,sens_x:1,sens_y:1,anti:0,anti_x:0,anti_y:0,invx:false,invy:false,rotation:0,snap:0,square:false,resolution:0,jitter:0,hires:0,snapback:false,ads_sens:1,shake:0,shake_freq:30});
   const tr = () => ({start:.02,end:1,anti:0,digital:false,curve:'linear',points:[[.25,.25],[.5,.5],[.75,.75]],y0:0,y1:1,smooth:false});
   let p = prof(); const t0 = performance.now();
   return {
-    get_init: async () => ({profiles:['Default','FPS','Racing','Custom'],current:p.name,profile:p,driver:'missing_package',sources:Object.keys(NAMES),targets:['A','B','X','Y','LB','RB','LT','RT','LS','RS','BACK','START','GUIDE','UP','DOWN','LEFT','RIGHT','NONE'],settings:{},data_dir:'%APPDATA%\\EdgeHub'}),
+    get_init: async () => ({profiles:['Default','FPS','Racing','Custom'],current:p.name,profile:p,driver:'missing_package',sources:Object.keys(NAMES),targets:['A','B','X','Y','LB','RB','LT','RT','LS','RS','BACK','START','GUIDE','UP','DOWN','LEFT','RIGHT','NONE'],settings:{},data_dir:'%APPDATA%\\EdgeHub',photos:mockPhotos}),
     get_state: async () => { const t=(performance.now()-t0)/1000, b={}; Object.keys(NAMES).forEach(k=>b[k]=false); b.cross = Math.sin(t*3)>.6; b.r1 = Math.cos(t*2)>.8;
       const lx=128+100*Math.cos(t), ly=128+100*Math.sin(t*1.3);
       return {connected:true,conn:'USB',name:'Wireless Controller',rate:250,proc_us:34,proc_us_max:90,battery:70,charging:true,lx,ly,rx:131,ry:126,l2v:(Math.sin(t)+1)*127,r2v:0,btn:b,gyro:[Math.sin(t)*300,Math.cos(t)*200,10],accel:[0,8000,0],touches:[[900+600*Math.sin(t),400]],mapping:false,current:p.name,poll:{min:3800,max:4300,avg:4000,jitter:60,recent:Array.from({length:160},(_, i)=>4000+Math.sin(t*5+i)*150+(i%37===0?900:0))},out:{lx:(lx-128)/128,ly:-(ly-128)/128,rx:0,ry:0},centers:{left:[0,0],right:[0,0]}}; },
@@ -633,6 +668,8 @@ function mockApi(){
     open_url: async()=>{},
     hidhide_status: async()=>({installed:false,on:false,device:null}), hidhide_set: async()=>({installing:true}), read_log: async()=>'[1] Edge Hub 2.1 starting\n[2] connected: PS4 Wireless Controller (USB/XInput)',
     list_devices: async()=>[{id:'p1',name:'Wireless Controller',kind:'PS4',conn:'USB',active:true},{id:'xinput:0',name:'Xbox controller (player 1)',kind:'Xbox',conn:'XInput',active:false}],
+    list_photos: async()=>mockPhotos, save_photo: async(m, d)=>{ mockPhotos = mockPhotos.filter(x=>x.id!==m.id).concat([Object.assign({}, m, {user:true, url: d || (mockPhotos.find(x=>x.id===m.id)||{}).url})]); return mockPhotos; },
+    delete_photo: async(id)=>{ mockPhotos = mockPhotos.filter(x=>x.id!==id); return mockPhotos; },
     import_profile: async(x)=>({profiles:['Default'],current:'Default',profile:x}), recent_apps: async()=>['cod.exe','fortnite.exe','chrome.exe'],
   };
 }
@@ -640,7 +677,8 @@ function mockApi(){
 /* ---------------- controller svg ---------------- */
 /* Realistic black & red controller, drawn in SVG so every part can animate. */
 const PAD_HOSTS = [['#pad-home','ph'],['#pad-btn','pb'],['#pad-stick','pst']];
-const vizCfg = () => ((typeof INIT !== 'undefined' && INIT && INIT.settings) || {}).viz || {};
+const vizCfg = () => { const v = ((typeof INIT !== 'undefined' && INIT && INIT.settings) || {}).viz || {};
+  return v.style === 'drawn' ? v : Object.assign({}, v, {style: 'photo', photo: EHPad.PHOTOS[v.photo] ? v.photo : defaultPhoto()}); };
 function padSVG(id){ return EHPad.svg(id, vizCfg(), {meters: false}); }
 function mountPads(){
   for (const [host, id] of PAD_HOSTS) {
@@ -672,6 +710,8 @@ function getViz(){
   v.version = EHPad.MODELS[v.model].versions[v.version] ? v.version : EHPad.MODELS[v.model].def;
   v.skin = v.skin || 'hexred'; v.custom = v.custom || {};
   v.overlay = Object.assign({}, EHPad.DEF.overlay, v.overlay || {});
+  if (v.style !== 'drawn') v.style = 'photo';
+  if (!EHPad.PHOTOS[v.photo]) v.photo = defaultPhoto();
   return v;
 }
 let vizSaveT = null;
@@ -709,6 +749,14 @@ function renderViz(){
   if (!$('#vizprev')) return;
   const v = getViz();
   renderVizPreview();
+  const photo = v.style === 'photo';
+  $$('#vstyle [data-st]').forEach(b => { b.classList.toggle('on', b.dataset.st === v.style); b.onclick = () => { const n = getViz(); n.style = b.dataset.st; setViz(n); }; });
+  ['#vc-photos', '#vc-popts'].forEach(s => $(s).style.display = photo ? '' : 'none');
+  ['#vc-drawn', '#vc-skins', '#vc-custom'].forEach(s => $(s).style.display = photo ? 'none' : '');
+  renderPhotoGrid(v);
+  $('#vpacc').oninput = e => { const n = getViz(); n.custom.accent = e.target.value; setViz(n, false); };
+  $('#vpaccreset').onclick = () => { const n = getViz(); delete n.custom.accent; setViz(n); };
+  $('#vpadd').onclick = () => openPhotoEditor(null);
   $('#vmodels').innerHTML = Object.entries(EHPad.MODELS).map(([key, m]) => `<button data-model="${key}" class="mcard ${v.model === key ? 'on' : ''}">
     ${EHPad.svg('mm-' + key, {model: key, skin: v.skin, custom: v.custom}, {shadow: false, glow: false})}<b>${m.name}</b></button>`).join('');
   $$('#vmodels [data-model]').forEach(b => b.onclick = () => { const n = getViz(); n.model = b.dataset.model; n.version = EHPad.MODELS[n.model].def; setViz(n); });
@@ -731,6 +779,209 @@ function renderViz(){
     el.oninput = el.onchange = () => { const n = getViz(); n.overlay[k2] = el.type === 'checkbox' ? el.checked : +el.value; if (out) out.textContent = Math.round(n.overlay[k2] * 100) + '%'; setViz(n, false); }; });
   $$('#ovbg [data-bg]').forEach(b => { b.classList.toggle('on', o.bg === b.dataset.bg); b.onclick = () => { const n = getViz(); n.overlay.bg = b.dataset.bg; setViz(n); }; });
 }
+/* ---------------- photo skins: picker + "add your own photo" editor ---------------- */
+const PTPL = {"ds4":{"aspect":1.5685,"parts":{"triangle":{"poly":[[0.7856,0.1169],[0.7893,0.1053],[0.7976,0.0924],[0.8031,0.0866],[0.8068,0.0837],[0.8252,0.0837],[0.8307,0.0866],[0.8344,0.0895],[0.8418,0.0981],[0.8464,0.1082],[0.85,0.1198],[0.8519,0.1313],[0.8519,0.1457],[0.85,0.1544],[0.8464,0.1631],[0.8436,0.1674],[0.8362,0.176],[0.8326,0.1789],[0.8252,0.1818],[0.8068,0.1818],[0.8013,0.176],[0.7912,0.1602],[0.7875,0.1515],[0.7856,0.1457]]},"circle":{"poly":[[0.8629,0.2468],[0.8648,0.2323],[0.8684,0.2208],[0.8749,0.2107],[0.8804,0.2049],[0.8841,0.202],[0.8896,0.1991],[0.9006,0.1991],[0.9062,0.202],[0.9135,0.2078],[0.9255,0.2266],[0.9273,0.2323],[0.9292,0.241],[0.931,0.2525],[0.9292,0.2698],[0.9273,0.2785],[0.919,0.2915],[0.908,0.3001],[0.9025,0.303],[0.8878,0.303],[0.8822,0.3001],[0.8703,0.2814],[0.8648,0.2641],[0.8629,0.2554]]},"cross":{"poly":[[0.7875,0.3622],[0.7893,0.3506],[0.7912,0.3449],[0.7948,0.3362],[0.8031,0.3232],[0.8068,0.3203],[0.8123,0.3175],[0.8289,0.3175],[0.8344,0.3203],[0.8381,0.3232],[0.85,0.342],[0.8519,0.3478],[0.8537,0.3564],[0.8537,0.3853],[0.8519,0.3939],[0.8482,0.4026],[0.8362,0.4185],[0.8326,0.4214],[0.827,0.4242],[0.8105,0.4242],[0.8031,0.4185],[0.7967,0.4084],[0.7893,0.3853],[0.7875,0.3766]]},"square":{"poly":[[0.7084,0.2468],[0.7102,0.2323],[0.7139,0.2208],[0.7203,0.2107],[0.7259,0.2049],[0.7295,0.202],[0.7351,0.1991],[0.7498,0.1991],[0.759,0.2049],[0.7645,0.2107],[0.7709,0.2208],[0.7746,0.2294],[0.7764,0.2381],[0.7783,0.2496],[0.7783,0.2583],[0.7764,0.267],[0.7709,0.2785],[0.7626,0.2915],[0.7516,0.3001],[0.7443,0.303],[0.7387,0.303],[0.7332,0.3001],[0.7222,0.2915],[0.7139,0.2785],[0.7102,0.267],[0.7084,0.2583]]},"up":{"poly":[[0.1582,0.1429],[0.1601,0.1342],[0.1665,0.1241],[0.1757,0.1212],[0.1868,0.1212],[0.1996,0.1241],[0.2061,0.1342],[0.2098,0.1457],[0.2098,0.1573],[0.2079,0.1861],[0.2061,0.1919],[0.2033,0.1962],[0.1978,0.202],[0.1702,0.2049],[0.1665,0.202],[0.1638,0.1977],[0.1582,0.1804]]},"down":{"poly":[[0.1546,0.3593],[0.1564,0.3247],[0.1601,0.3074],[0.1638,0.2987],[0.1665,0.2944],[0.1776,0.2799],[0.1868,0.2799],[0.1996,0.2973],[0.2042,0.3074],[0.2061,0.3218],[0.2079,0.3506],[0.2061,0.3622],[0.1987,0.3766],[0.196,0.381],[0.1831,0.3838],[0.1628,0.381],[0.1582,0.3737],[0.1546,0.3622]]},"left":{"poly":[[0.0975,0.2496],[0.0994,0.2294],[0.103,0.2179],[0.1058,0.2136],[0.1095,0.2107],[0.1279,0.2107],[0.1408,0.2136],[0.1444,0.2165],[0.1573,0.2338],[0.1656,0.2468],[0.1656,0.2612],[0.1555,0.2742],[0.1463,0.2828],[0.1352,0.2915],[0.1058,0.2915],[0.1012,0.2843],[0.0975,0.2727]]},"right":{"poly":[[0.195,0.2583],[0.2153,0.2237],[0.218,0.2193],[0.2254,0.2136],[0.242,0.2107],[0.2548,0.2107],[0.2585,0.2136],[0.2613,0.2179],[0.2649,0.2294],[0.2668,0.241],[0.2668,0.2525],[0.2649,0.2756],[0.2622,0.2799],[0.253,0.2915],[0.2254,0.2915],[0.2144,0.2799],[0.196,0.2597]]},"share":{"poly":[[0.276,0.0736],[0.2778,0.0678],[0.2824,0.0606],[0.2861,0.0577],[0.3008,0.0577],[0.3054,0.0649],[0.3091,0.0736],[0.3091,0.1227],[0.3054,0.1342],[0.2971,0.1414],[0.2898,0.1414],[0.2824,0.1356],[0.2797,0.1313],[0.276,0.1227]]},"options":{"poly":[[0.6955,0.0678],[0.7019,0.0577],[0.7167,0.0577],[0.7203,0.0606],[0.7249,0.0678],[0.7268,0.0794],[0.7268,0.1255],[0.7185,0.1385],[0.7148,0.1414],[0.7056,0.1414],[0.7019,0.1385],[0.6955,0.1284]]},"touch":{"rect":[0.3312,0.0433,0.3367,0.2655],"rx":0.0147},"ps":{"c":[0.4986,0.4791],"r":0.0313},"l1":{"poly":[[0.1362,0.0245],[0.1426,0.0144],[0.1592,0.0029],[0.1702,-0.0029],[0.1794,-0.0058],[0.2162,-0.0058],[0.2328,0.0],[0.2438,0.0058],[0.253,0.0115],[0.2576,0.0216],[0.2567,0.0289],[0.2475,0.0289],[0.1371,0.026]]},"r1":{"poly":[[0.7525,0.013],[0.7608,0.0058],[0.77,0.0],[0.7792,-0.0029],[0.7902,-0.0058],[0.8123,-0.0058],[0.8344,0.0],[0.851,0.0087],[0.862,0.0173],[0.8648,0.0216],[0.8638,0.0289],[0.8583,0.0289],[0.7553,0.0231]]}},"sticks":{"l3":{"c":[0.3385,0.4658],"r":0.0681,"well":0.0828},"r3":{"c":[0.6635,0.4696],"r":0.0681,"well":0.0828}},"touchpad":true},"ds5":{"aspect":1.4267,"parts":{"triangle":{"c":[0.8181,0.1158],"r":0.0347},"square":{"c":[0.7509,0.2164],"r":0.0347},"circle":{"c":[0.8941,0.2164],"r":0.0347},"cross":{"c":[0.8246,0.3154],"r":0.0347},"up":{"rect":[0.1763,0.1013,0.0503,0.0831],"rx":0.0112},"down":{"rect":[0.1796,0.2419,0.0538,0.0863],"rx":0.0112},"left":{"rect":[0.1192,0.178,0.0605,0.0767],"rx":0.0112},"right":{"rect":[0.2244,0.178,0.0638,0.0767],"rx":0.0112},"share":{"rect":[0.2636,0.0406,0.0269,0.0575],"rx":0.0134},"options":{"rect":[0.7273,0.0406,0.0269,0.0575],"rx":0.0134},"touch":{"rect":[0.3129,0.0118,0.3897,0.2492],"rx":0.0246},"ps":{"c":[0.5088,0.3953],"r":0.0269},"l1":{"poly":[[0.1383,0.0395],[0.1423,0.0357],[0.1462,0.0338],[0.1502,0.0301],[0.1542,0.0282],[0.1581,0.0263],[0.1621,0.0226],[0.166,0.0226],[0.17,0.0207],[0.1739,0.0188],[0.1779,0.0169],[0.1818,0.015],[0.1858,0.015],[0.1897,0.0132],[0.1937,0.0132],[0.1976,0.0132],[0.2016,0.0113],[0.2055,0.0113],[0.2095,0.0094],[0.2134,0.0094],[0.2174,0.0075],[0.2213,0.0075],[0.2253,0.0075],[0.2292,0.0075],[0.2332,0.0075],[0.2372,0.0075],[0.2411,0.0094],[0.2451,0.0113],[0.249,0.0113],[0.253,0.0113],[0.2569,0.0094],[0.2609,0.0094],[0.2648,0.0094],[0.2688,0.0094],[0.2727,0.0113],[0.2767,0.0132],[0.2806,0.015],[0.2846,0.0188],[0.2846,0.0414],[0.2806,0.0376],[0.2767,0.0357],[0.2727,0.0338],[0.2688,0.032],[0.2648,0.032],[0.2609,0.032],[0.2569,0.032],[0.253,0.0338],[0.249,0.0338],[0.2451,0.0338],[0.2411,0.032],[0.2372,0.0301],[0.2332,0.0301],[0.2292,0.0301],[0.2253,0.0301],[0.2213,0.0301],[0.2174,0.0301],[0.2134,0.032],[0.2095,0.032],[0.2055,0.0338],[0.2016,0.0338],[0.1976,0.0357],[0.1937,0.0357],[0.1897,0.0357],[0.1858,0.0376],[0.1818,0.0376],[0.1779,0.0395],[0.1739,0.0414],[0.17,0.0432],[0.166,0.0451],[0.1621,0.0451],[0.1581,0.0489],[0.1542,0.0508],[0.1502,0.0526],[0.1462,0.0564],[0.1423,0.0583],[0.1383,0.062]]},"r1":{"poly":[[0.7325,0.0132],[0.7365,0.0132],[0.7404,0.0113],[0.7444,0.0113],[0.7484,0.0113],[0.7523,0.0113],[0.7563,0.0094],[0.7602,0.0094],[0.7642,0.0075],[0.7681,0.0075],[0.7721,0.0075],[0.776,0.0075],[0.78,0.0094],[0.7839,0.0094],[0.7879,0.0113],[0.7918,0.0113],[0.7958,0.0113],[0.7997,0.0132],[0.8037,0.0132],[0.8076,0.015],[0.8116,0.015],[0.8155,0.0169],[0.8195,0.0169],[0.8235,0.0188],[0.8274,0.0207],[0.8314,0.0226],[0.8353,0.0226],[0.8393,0.0244],[0.8432,0.0282],[0.8472,0.0301],[0.8511,0.0338],[0.8551,0.0395],[0.859,0.0432],[0.863,0.0451],[0.8669,0.0489],[0.8709,0.0545],[0.8748,0.0602],[0.8748,0.0827],[0.8709,0.0771],[0.8669,0.0714],[0.863,0.0677],[0.859,0.0658],[0.8551,0.062],[0.8511,0.0564],[0.8472,0.0526],[0.8432,0.0508],[0.8393,0.047],[0.8353,0.0451],[0.8314,0.0451],[0.8274,0.0432],[0.8235,0.0414],[0.8195,0.0395],[0.8155,0.0395],[0.8116,0.0376],[0.8076,0.0376],[0.8037,0.0357],[0.7997,0.0357],[0.7958,0.0338],[0.7918,0.0338],[0.7879,0.0338],[0.7839,0.032],[0.78,0.032],[0.776,0.0301],[0.7721,0.0301],[0.7681,0.0301],[0.7642,0.0301],[0.7602,0.032],[0.7563,0.032],[0.7523,0.0338],[0.7484,0.0338],[0.7444,0.0338],[0.7404,0.0338],[0.7365,0.0357],[0.7325,0.0357]]}},"sticks":{"l3":{"c":[0.3634,0.3793],"r":0.0627,"well":0.0784},"r3":{"c":[0.6825,0.3793],"r":0.0627,"well":0.0784}},"touchpad":true},"xbox":{"aspect":1.3984,"parts":{"triangle":{"c":[0.8042,0.1655],"r":0.0295},"circle":{"c":[0.8753,0.2742],"r":0.0295},"cross":{"c":[0.8151,0.3679],"r":0.0295},"square":{"c":[0.744,0.2647],"r":0.0295},"up":{"rect":[0.3581,0.4091,0.0482,0.075],"rx":0.008},"down":{"rect":[0.3581,0.546,0.0482,0.0787],"rx":0.008},"left":{"rect":[0.3045,0.4803,0.0536,0.0712],"rx":0.008},"right":{"rect":[0.4063,0.4803,0.0563,0.0712],"rx":0.008},"share":{"rect":[0.4278,0.2312,0.0456,0.0637],"rx":0.0227},"options":{"rect":[0.5898,0.2312,0.0456,0.0637],"rx":0.0227},"touch":{"rect":[0.5028,0.3154,0.059,0.0487],"rx":0.0173},"ps":{"c":[0.5269,0.1148],"r":0.0402},"l1":{"poly":[[0.1678,0.0789],[0.1721,0.0789],[0.1763,0.0769],[0.1805,0.073],[0.1848,0.0671],[0.189,0.0631],[0.1932,0.0592],[0.1975,0.0552],[0.2017,0.0513],[0.2059,0.0493],[0.2102,0.0454],[0.2144,0.0414],[0.2186,0.0375],[0.2228,0.0355],[0.2271,0.0316],[0.2313,0.0296],[0.2355,0.0276],[0.2398,0.0276],[0.244,0.0256],[0.2482,0.0237],[0.2525,0.0217],[0.2567,0.0197],[0.2609,0.0197],[0.2652,0.0178],[0.2694,0.0158],[0.2736,0.0158],[0.2779,0.0138],[0.2821,0.0138],[0.2863,0.0118],[0.2906,0.0118],[0.2948,0.0118],[0.299,0.0118],[0.3032,0.0118],[0.3075,0.0138],[0.3117,0.0],[0.3159,0.0],[0.3202,0.002],[0.3244,0.002],[0.3286,0.002],[0.3286,0.0296],[0.3244,0.0296],[0.3202,0.0296],[0.3159,0.0276],[0.3117,0.0276],[0.3075,0.0414],[0.3032,0.0394],[0.299,0.0394],[0.2948,0.0394],[0.2906,0.0394],[0.2863,0.0394],[0.2821,0.0414],[0.2779,0.0414],[0.2736,0.0434],[0.2694,0.0434],[0.2652,0.0454],[0.2609,0.0473],[0.2567,0.0473],[0.2525,0.0493],[0.2482,0.0513],[0.244,0.0533],[0.2398,0.0552],[0.2355,0.0552],[0.2313,0.0572],[0.2271,0.0592],[0.2228,0.0631],[0.2186,0.0651],[0.2144,0.069],[0.2102,0.073],[0.2059,0.0769],[0.2017,0.0789],[0.1975,0.0828],[0.1932,0.0868],[0.189,0.0907],[0.1848,0.0947],[0.1805,0.1006],[0.1763,0.1045],[0.1721,0.1065],[0.1678,0.1065]]},"r1":{"poly":[[0.7094,0.0039],[0.7137,0.002],[0.7179,0.002],[0.7221,0.002],[0.7264,0.002],[0.7306,0.002],[0.7348,0.002],[0.7391,0.0039],[0.7433,0.0039],[0.7475,0.0039],[0.7518,0.0059],[0.756,0.0079],[0.7602,0.0079],[0.7645,0.0099],[0.7687,0.0138],[0.7729,0.0158],[0.7772,0.0197],[0.7814,0.0237],[0.7856,0.0256],[0.7898,0.0276],[0.7941,0.0296],[0.7983,0.0335],[0.8025,0.0355],[0.8068,0.0375],[0.811,0.0394],[0.8152,0.0454],[0.8195,0.0493],[0.8237,0.0552],[0.8279,0.0631],[0.8322,0.069],[0.8364,0.0789],[0.8406,0.0868],[0.8449,0.0947],[0.8491,0.1026],[0.8533,0.1105],[0.8575,0.1164],[0.8618,0.1262],[0.866,0.1341],[0.8702,0.146],[0.8702,0.1736],[0.866,0.1617],[0.8618,0.1538],[0.8575,0.144],[0.8533,0.1381],[0.8491,0.1302],[0.8449,0.1223],[0.8406,0.1144],[0.8364,0.1065],[0.8322,0.0966],[0.8279,0.0907],[0.8237,0.0828],[0.8195,0.0769],[0.8152,0.073],[0.811,0.0671],[0.8068,0.0651],[0.8025,0.0631],[0.7983,0.0611],[0.7941,0.0572],[0.7898,0.0552],[0.7856,0.0533],[0.7814,0.0513],[0.7772,0.0473],[0.7729,0.0434],[0.7687,0.0414],[0.7645,0.0375],[0.7602,0.0355],[0.756,0.0355],[0.7518,0.0335],[0.7475,0.0316],[0.7433,0.0316],[0.7391,0.0316],[0.7348,0.0296],[0.7306,0.0296],[0.7264,0.0296],[0.7221,0.0296],[0.7179,0.0296],[0.7137,0.0296],[0.7094,0.0316]]}},"sticks":{"l3":{"c":[0.2348,0.2629],"r":0.0643,"well":0.0804},"r3":{"c":[0.685,0.4895],"r":0.0643,"well":0.0804}},"touchpad":false}};
+const PART_NAMES = Object.assign({}, NAMES, {l3: 'Left stick', r3: 'Right stick'});
+function photoList(){ return Object.values(EHPad.PHOTOS); }
+function defaultPhoto(){ return EHPad.PHOTOS.mine ? 'mine' : (photoList().find(p => p.user) || {}).id || 'ps5'; }
+function renderPhotoGrid(v){
+  const grid = $('#vphotos'); if (!grid) return;
+  const list = photoList().sort((a, b) => (b.user ? 1 : 0) - (a.user ? 1 : 0));
+  const key = list.map(p => p.id + ':' + (p.v || 1)).join('|');
+  if (grid._k !== key) {
+    grid._k = key;
+    grid.innerHTML = list.map(p => `<div class="pcard" data-photo="${p.id}">
+        ${EHPad.svg('pp-' + p.id, {style: 'photo', photo: p.id}, {shadow: false, glow: false})}
+        <b>${esc(p.name || p.id)}</b>${p.user ? '<span class="badge ok">Yours</span>' : ''}
+        ${p.user ? `<span class="pact"><button class="btn sm" data-pedit="${p.id}">Edit</button><button class="btn sm" data-pdel="${p.id}">Delete</button></span>` : ''}</div>`).join('')
+      + `<button class="pcard padd" id="paddbtn"><span>+</span><b>Add your own photo</b><span class="muted small">any controller, any color</span></button>`;
+    $$('#vphotos [data-photo]').forEach(c => c.onclick = e => { if (e.target.closest('button')) return; const n = getViz(); n.style = 'photo'; n.photo = c.dataset.photo; setViz(n); });
+    $$('#vphotos [data-pedit]').forEach(b => b.onclick = () => openPhotoEditor(EHPad.PHOTOS[b.dataset.pedit]));
+    $$('#vphotos [data-pdel]').forEach(b => b.onclick = async () => {
+      const p = EHPad.PHOTOS[b.dataset.pdel]; if (!confirm(`Delete the photo skin "${p.name}"? This removes it from this PC.`)) return;
+      delete EHPad.PHOTOS[p.id]; INIT.photos = await api.delete_photo(p.id);
+      const n = getViz(); if (n.photo === p.id) n.photo = defaultPhoto(); setViz(n); toast('Photo skin deleted');
+    });
+    $('#paddbtn').onclick = () => openPhotoEditor(null);
+  }
+  $$('#vphotos [data-photo]').forEach(c => c.classList.toggle('on', c.dataset.photo === v.photo));
+  const m = EHPad.PHOTOS[v.photo] || {};
+  $('#vphotocred').innerHTML = m.credit ? 'Photo: ' + esc(m.credit) : m.user ? 'Your own photo. It stays on this PC.' : '';
+  const acc = (v.custom && v.custom.accent) || m.accent || '#ff2a3d';
+  $('#vpacc').value = acc;
+}
+
+/* ---- editor ---- */
+let PE = null;   // {img, w, h, meta, sel, name, tpl}
+function shapeMove(p, dx, dy){
+  if (p.poly) p.poly = p.poly.map(([x, y]) => [x + dx, y + dy]);
+  else if (p.c) p.c = [p.c[0] + dx, p.c[1] + dy];
+  else if (p.rect) p.rect = [p.rect[0] + dx, p.rect[1] + dy, p.rect[2], p.rect[3]];
+}
+function shapeCenter(p){
+  if (p.poly) { const xs = p.poly.map(q => q[0]), ys = p.poly.map(q => q[1]); return [(Math.min(...xs) + Math.max(...xs)) / 2, (Math.min(...ys) + Math.max(...ys)) / 2]; }
+  if (p.c) return p.c;
+  return [p.rect[0] + p.rect[2] / 2, p.rect[1] + p.rect[3] / 2];
+}
+function shapeScale(p, f){
+  const [cx, cy] = shapeCenter(p);
+  if (p.poly) p.poly = p.poly.map(([x, y]) => [cx + (x - cx) * f, cy + (y - cy) * f]);
+  else if (p.c) { p.r *= f; if (p.well) p.well *= f; }
+  else { const w = p.rect[2] * f, h = p.rect[3] * f; p.rect = [cx - w / 2, cy - h / 2, w, h]; p.rx = (p.rx || 6) * f; }
+}
+function fromTemplate(tplKey, box){
+  const t = PTPL[tplKey], [bx, by, bw, bh] = box, X = x => bx + x * bw, Y = y => by + y * bh, R = r => r * bw;
+  const parts = {};
+  for (const [k, p] of Object.entries(t.parts)) {
+    if (p.poly) parts[k] = {poly: p.poly.map(([x, y]) => [X(x), Y(y)])};
+    else if (p.c) parts[k] = {c: [X(p.c[0]), Y(p.c[1])], r: R(p.r)};
+    else parts[k] = {rect: [X(p.rect[0]), Y(p.rect[1]), p.rect[2] * bw, p.rect[3] * bh], rx: R(p.rx)};
+  }
+  const sticks = {};
+  for (const [k, s] of Object.entries(t.sticks)) sticks[k] = {c: [X(s.c[0]), Y(s.c[1])], r: R(s.r), well: R(s.well)};
+  return {parts, sticks, touchpad: t.touchpad};
+}
+const round1 = o => JSON.parse(JSON.stringify(o, (k, v) => typeof v === 'number' ? Math.round(v * 10) / 10 : v));
+
+// load a picture: shrink to <= 1400px, optionally knock out a plain background, crop to the controller
+async function loadPicture(file, removeBg){
+  const url = URL.createObjectURL(file);
+  const img = await new Promise((ok, bad) => { const i = new Image(); i.onload = () => ok(i); i.onerror = bad; i.src = url; });
+  const s = Math.min(1, 1400 / Math.max(img.width, img.height));
+  let w = Math.round(img.width * s), h = Math.round(img.height * s);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'); g.drawImage(img, 0, 0, w, h); URL.revokeObjectURL(url);
+  let d = g.getImageData(0, 0, w, h); const px = d.data;
+  if (removeBg) {
+    const seen = new Uint8Array(w * h), st = [];
+    const ref = [];
+    for (const [x, y] of [[0, 0], [w - 1, 0], [0, h - 1], [w - 1, h - 1], [w >> 1, 0], [0, h >> 1], [w - 1, h >> 1], [w >> 1, h - 1]]) { const i = (y * w + x) * 4; ref.push([px[i], px[i + 1], px[i + 2]]); }
+    const near = i => px[i + 3] < 20 || ref.some(([r, gg, b]) => Math.abs(px[i] - r) + Math.abs(px[i + 1] - gg) + Math.abs(px[i + 2] - b) < 70);
+    for (let x = 0; x < w; x++) st.push(x, (h - 1) * w + x);
+    for (let y = 0; y < h; y++) st.push(y * w, y * w + w - 1);
+    while (st.length) {
+      const p = st.pop(); if (seen[p]) continue; seen[p] = 1;
+      if (!near(p * 4)) continue;
+      px[p * 4 + 3] = 0;
+      const x = p % w;
+      if (x > 0) st.push(p - 1); if (x < w - 1) st.push(p + 1); if (p >= w) st.push(p - w); if (p < w * (h - 1)) st.push(p + w);
+    }
+    // soften the cut edge by one pixel
+    // eat the light halo: drop the outermost ring, half-fade the next one
+    for (const fade of [0, 150]) {
+      const a = new Uint8Array(w * h); for (let i = 0; i < w * h; i++) a[i] = px[i * 4 + 3] > 200 ? 1 : 0;
+      for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) { const i = y * w + x;
+        if (a[i] && (!a[i - 1] || !a[i + 1] || !a[i - w] || !a[i + w])) px[i * 4 + 3] = fade; }
+    }
+    g.putImageData(d, 0, 0);
+  }
+  // crop to the controller (+3% margin)
+  let x0 = w, y0 = h, x1 = 0, y1 = 0;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) if (px[(y * w + x) * 4 + 3] > 128) { if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  if (x1 <= x0) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
+  const m = Math.round(Math.max(x1 - x0, y1 - y0) * .03), cx0 = Math.max(0, x0 - m), cy0 = Math.max(0, y0 - m), cx1 = Math.min(w, x1 + m + 1), cy1 = Math.min(h, y1 + m + 1);
+  const out = document.createElement('canvas'); out.width = cx1 - cx0; out.height = cy1 - cy0;
+  out.getContext('2d').drawImage(cv, cx0, cy0, out.width, out.height, 0, 0, out.width, out.height);
+  return {dataUrl: out.toDataURL('image/png'), w: out.width, h: out.height, box: [x0 - cx0, y0 - cy0, x1 - x0, y1 - y0]};
+}
+function guessTemplate(w, h){ const a = w / h; return a > 1.5 ? 'ds4' : 'ds5'; }
+
+function openPhotoEditor(existing){
+  PE = {sel: 'cross', tpl: 'ds4', name: '', meta: null, dataUrl: '', removeBg: true, file: null};
+  if (existing) {
+    PE.meta = JSON.parse(JSON.stringify(existing)); PE.name = existing.name || existing.id;
+    PE.dataUrl = ''; PE.url = `photo/${existing.id}.png?v=${existing.v || 1}`;
+  }
+  $('#pename').value = PE.name;
+  $('#petpl').value = PE.tpl; $('#pebg').checked = true;
+  $('#pefilewrap').style.display = existing ? 'none' : '';
+  $('#photomodal').classList.add('on');
+  renderPhotoEditor();
+}
+async function peLoadFile(){
+  const f = $('#pefile').files[0]; if (!f) return;
+  PE.file = f; toast('Loading photo…');
+  const pic = await loadPicture(f, $('#pebg').checked);
+  PE.dataUrl = pic.dataUrl; PE.url = pic.dataUrl; PE.box = pic.box;
+  PE.tpl = guessTemplate(pic.box[2], pic.box[3]); $('#petpl').value = PE.tpl;
+  if (!PE.name) { PE.name = f.name.replace(/\.[^.]+$/, '').slice(0, 30) || 'My controller'; $('#pename').value = PE.name; }
+  PE.meta = Object.assign({w: pic.w, h: pic.h}, fromTemplate(PE.tpl, pic.box));
+  renderPhotoEditor();
+}
+function peApplyTemplate(){
+  if (!PE.meta) return;
+  const box = PE.box || [0, 0, PE.meta.w, PE.meta.h];
+  Object.assign(PE.meta, fromTemplate(PE.tpl, box)); renderPhotoEditor();
+}
+function peShapeSvg(k, p, sel){
+  const cls = `pem ${sel ? 'sel' : ''}`;
+  if (p.poly) return `<path class="${cls}" data-pk="${k}" d="M${p.poly.map(q => q.join(',')).join('L')}Z"/>`;
+  if (p.c) return `<circle class="${cls}" data-pk="${k}" cx="${p.c[0]}" cy="${p.c[1]}" r="${p.r}"/>` + (p.well ? `<circle class="pem well nopt" cx="${p.c[0]}" cy="${p.c[1]}" r="${p.well}"/>` : '');
+  return `<rect class="${cls}" data-pk="${k}" x="${p.rect[0]}" y="${p.rect[1]}" width="${p.rect[2]}" height="${p.rect[3]}" rx="${p.rx || 6}"/>`;
+}
+function peGet(k){ return PE.meta.parts[k] || PE.meta.sticks[k]; }
+function renderPhotoEditor(){
+  const st = $('#pestage'), ok = !!PE.meta;
+  $('#pesave').disabled = !ok; $('#petools').style.display = ok ? '' : 'none';
+  if (!ok) { st.innerHTML = `<div class="peempty">Pick a photo of your controller, taken straight from the front.<br><span class="muted small">A plain background (a desk, a wall, a sheet of paper) works best.</span></div>`; return; }
+  const m = PE.meta;
+  const all = Object.assign({}, m.parts, m.sticks);
+  st.innerHTML = `<svg id="pesvg" viewBox="0 0 ${m.w} ${m.h}"><image href="${PE.url}" width="${m.w}" height="${m.h}"/>
+    ${Object.entries(all).map(([k, p]) => peShapeSvg(k, p, k === PE.sel)).join('')}</svg>`;
+  $('#pechips').innerHTML = Object.keys(all).map(k => `<button data-pc="${k}" class="${k === PE.sel ? 'on' : ''}">${PART_NAMES[k] || k}</button>`).join('');
+  $$('#pechips [data-pc]').forEach(b => b.onclick = () => { PE.sel = b.dataset.pc; renderPhotoEditor(); });
+  $('#peselname').textContent = PART_NAMES[PE.sel] || PE.sel;
+  const svg = $('#pesvg');
+  const toLocal = e => { const pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; return pt.matrixTransform(svg.getScreenCTM().inverse()); };
+  svg.onpointerdown = e => {
+    const hit = e.target.closest('[data-pk]');
+    if (hit && hit.dataset.pk !== PE.sel) { PE.sel = hit.dataset.pk; renderPhotoEditor(); return; }
+    let last = toLocal(e); svg.setPointerCapture(e.pointerId);
+    // clicking empty space moves the selected marker there
+    if (!hit) { const p = peGet(PE.sel), c = shapeCenter(p); shapeMove(p, last.x - c[0], last.y - c[1]); renderPhotoEditor(); return; }
+    svg.onpointermove = ev => { const q = toLocal(ev); shapeMove(peGet(PE.sel), q.x - last.x, q.y - last.y); last = q; peRedrawSel(); };
+    svg.onpointerup = () => { svg.onpointermove = null; };
+  };
+  svg.onwheel = e => { e.preventDefault(); shapeScale(peGet(PE.sel), e.deltaY < 0 ? 1.04 : 1 / 1.04); peRedrawSel(); };
+}
+function peRedrawSel(){
+  const el = $(`#pesvg [data-pk="${PE.sel}"]`); if (!el) return;
+  const tmp = document.createElement('div');
+  tmp.innerHTML = `<svg>${peShapeSvg(PE.sel, peGet(PE.sel), true)}</svg>`;
+  const parts = [...tmp.firstChild.children];
+  const well = el.nextElementSibling && el.nextElementSibling.classList.contains('well') ? el.nextElementSibling : null;
+  el.replaceWith(parts[0]); if (well && parts[1]) well.replaceWith(parts[1]);
+}
+async function peSave(){
+  const name = ($('#pename').value || '').trim() || 'My controller';
+  let id = PE.meta.id;
+  if (!id) { id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 28) || 'photo';
+    if (['ps5', 'xbox'].includes(id) || EHPad.PHOTOS[id]) id += '-' + Math.random().toString(36).slice(2, 6); }
+  const meta = round1(Object.assign({}, PE.meta, {id, name, v: Date.now(), accent: PE.meta.accent || '#ff2a3d'}));
+  delete meta.url; delete meta.user;
+  try {
+    INIT.photos = await api.save_photo(meta, PE.dataUrl || '');
+  } catch (e) { toast('Could not save: ' + e); return; }
+  EHPad.registerPhotos(INIT.photos || []);
+  $('#photomodal').classList.remove('on');
+  const n = getViz(); n.style = 'photo'; n.photo = id; setViz(n); toast('Saved: ' + name);
+}
+function initPhotoEditor(){
+  $('#pefile').onchange = peLoadFile;
+  $('#pebg').onchange = () => { if (PE.file) { $('#pefile').onchange(); } };
+  $('#petpl').onchange = e => { PE.tpl = e.target.value; peApplyTemplate(); };
+  $('#pename').oninput = e => PE.name = e.target.value;
+  $('#pebig').onclick = () => { shapeScale(peGet(PE.sel), 1.06); peRedrawSel(); };
+  $('#pesmall').onclick = () => { shapeScale(peGet(PE.sel), 1 / 1.06); peRedrawSel(); };
+  $('#pecancel').onclick = () => $('#photomodal').classList.remove('on');
+  $('#pesave').onclick = peSave;
+  document.addEventListener('keydown', e => {
+    if (!$('#photomodal').classList.contains('on') || !PE || !PE.meta || e.target.tagName === 'INPUT') return;
+    const d = e.shiftKey ? 5 : 1, mv = {ArrowLeft: [-d, 0], ArrowRight: [d, 0], ArrowUp: [0, -d], ArrowDown: [0, d]}[e.key];
+    if (mv) { e.preventDefault(); shapeMove(peGet(PE.sel), mv[0], mv[1]); peRedrawSel(); }
+  });
+}
+
 /* ---------------- navigation ---------------- */
 function buildNav(){
   $('#nav').innerHTML = PAGES.map(([id, nm, d]) => `<button data-p="${id}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="${d}"/></svg>${nm}</button>`).join('');
@@ -1542,8 +1793,9 @@ async function selectProfile(n){ await refreshInit(await api.select_profile(n));
 
 /* ---------------- boot ---------------- */
 async function boot(){
-  buildNav(); mountPads();
+  buildNav();
   INIT = await api.get_init(); P = INIT.profile;
+  EHPad.registerPhotos(INIT.photos || []); mountPads(); initPhotoEditor();
   const sw = ['#ff2a3d','#ff8a00','#ffd400','#2fd27a','#00c2ff','#2a5bff','#9b5cff','#ff3fb4','#ffffff'];
   $('#swatches').innerHTML = sw.map(c => `<i data-c="${c}" style="background:${c}"></i>`).join('');
   $$('#swatches i').forEach(i => i.onclick = () => { P.color = i.dataset.c; save(); renderProfiles(); });

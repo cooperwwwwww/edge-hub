@@ -241,9 +241,61 @@
     return m + trig('l2', 0) + trig('r2', 1) + bump('l1', 0) + bump('r1', 1);
   }
 
+  // ---------------------------------------------------------------- photo skins (like gamepad viewers: a real photo, every part animated)
+  const PHOTOS = {"ps5":{"id":"ps5","w":778,"h":619,"parts":{"triangle":{"c":[629.9,140.6],"r":26.3},"square":{"c":[578.9,194.1],"r":26.3},"circle":{"c":[687.6,194.1],"r":26.3},"cross":{"c":[634.9,246.8],"r":26.3},"up":{"rect":[142.8,132.9,38.2,44.2],"rx":8.5},"down":{"rect":[145.3,207.7,40.8,45.9],"rx":8.5},"left":{"rect":[99.5,173.7,45.9,40.8],"rx":8.5},"right":{"rect":[179.3,173.7,48.4,40.8],"rx":8.5},"share":{"rect":[209.1,100.6,20.4,30.6],"rx":10.2},"options":{"rect":[561.0,100.6,20.4,30.6],"rx":10.2},"touch":{"rect":[246.5,85.3,295.8,132.6],"rx":18.7},"ps":{"c":[395.2,289.3],"r":20.4},"l1":{"rect":[114.8,83.0,110.5,12.0],"rx":10.2,"poly":[[114.0,100.0],[117.0,98.0],[120.0,97.0],[123.0,95.0],[126.0,94.0],[129.0,93.0],[132.0,91.0],[135.0,91.0],[138.0,90.0],[141.0,89.0],[144.0,88.0],[147.0,87.0],[150.0,87.0],[153.0,86.0],[156.0,86.0],[159.0,86.0],[162.0,85.0],[165.0,85.0],[168.0,84.0],[171.0,84.0],[174.0,83.0],[177.0,83.0],[180.0,83.0],[183.0,83.0],[186.0,83.0],[189.0,83.0],[192.0,84.0],[195.0,85.0],[198.0,85.0],[201.0,85.0],[204.0,84.0],[207.0,84.0],[210.0,84.0],[213.0,84.0],[216.0,85.0],[219.0,86.0],[222.0,87.0],[225.0,89.0],[225.0,101.0],[222.0,99.0],[219.0,98.0],[216.0,97.0],[213.0,96.0],[210.0,96.0],[207.0,96.0],[204.0,96.0],[201.0,97.0],[198.0,97.0],[195.0,97.0],[192.0,96.0],[189.0,95.0],[186.0,95.0],[183.0,95.0],[180.0,95.0],[177.0,95.0],[174.0,95.0],[171.0,96.0],[168.0,96.0],[165.0,97.0],[162.0,97.0],[159.0,98.0],[156.0,98.0],[153.0,98.0],[150.0,99.0],[147.0,99.0],[144.0,100.0],[141.0,101.0],[138.0,102.0],[135.0,103.0],[132.0,103.0],[129.0,105.0],[126.0,106.0],[123.0,107.0],[120.0,109.0],[117.0,110.0],[114.0,112.0]]},"r1":{"rect":[565.2,83.0,110.5,12.0],"rx":10.2,"poly":[[565.0,86.0],[568.0,86.0],[571.0,85.0],[574.0,85.0],[577.0,85.0],[580.0,85.0],[583.0,84.0],[586.0,84.0],[589.0,83.0],[592.0,83.0],[595.0,83.0],[598.0,83.0],[601.0,84.0],[604.0,84.0],[607.0,85.0],[610.0,85.0],[613.0,85.0],[616.0,86.0],[619.0,86.0],[622.0,87.0],[625.0,87.0],[628.0,88.0],[631.0,88.0],[634.0,89.0],[637.0,90.0],[640.0,91.0],[643.0,91.0],[646.0,92.0],[649.0,94.0],[652.0,95.0],[655.0,97.0],[658.0,100.0],[661.0,102.0],[664.0,103.0],[667.0,105.0],[670.0,108.0],[673.0,111.0],[673.0,123.0],[670.0,120.0],[667.0,117.0],[664.0,115.0],[661.0,114.0],[658.0,112.0],[655.0,109.0],[652.0,107.0],[649.0,106.0],[646.0,104.0],[643.0,103.0],[640.0,103.0],[637.0,102.0],[634.0,101.0],[631.0,100.0],[628.0,100.0],[625.0,99.0],[622.0,99.0],[619.0,98.0],[616.0,98.0],[613.0,97.0],[610.0,97.0],[607.0,97.0],[604.0,96.0],[601.0,96.0],[598.0,95.0],[595.0,95.0],[592.0,95.0],[589.0,95.0],[586.0,96.0],[583.0,96.0],[580.0,97.0],[577.0,97.0],[574.0,97.0],[571.0,97.0],[568.0,98.0],[565.0,98.0]]}},"sticks":{"l3":{"c":[284.8,280.8],"r":47.6,"well":59.5},"r3":{"c":[527.0,280.8],"r":47.6,"well":59.5}},"credit":"DualSense photo: Chris Woodrich, CC BY-SA 4.0, via Wikimedia Commons","name":"PS5 DualSense (photo)","accent":"#4c8dff","v":2},"xbox":{"id":"xbox","w":750,"h":575,"parts":{"triangle":{"c":[584.2,136.9],"r":20.9},"circle":{"c":[634.6,192.0],"r":20.9},"cross":{"c":[591.9,239.5],"r":20.9},"square":{"c":[541.5,187.2],"r":20.9},"up":{"rect":[267.9,260.4,34.2,38.0],"rx":5.7},"down":{"rect":[267.9,329.8,34.2,39.9],"rx":5.7},"left":{"rect":[229.9,296.5,38.0,36.1],"rx":5.7},"right":{"rect":[302.1,296.5,39.9,36.1],"rx":5.7},"share":{"rect":[317.3,170.2,32.3,32.3],"rx":16.1},"options":{"rect":[432.2,170.2,32.3,32.3],"rx":16.1},"touch":{"rect":[370.5,212.9,41.8,24.7],"rx":12.3},"ps":{"c":[387.6,111.2],"r":28.5},"l1":{"rect":[133.0,53.0,114.0,14.0],"rx":9.5,"poly":[[133.0,93.0],[136.0,93.0],[139.0,92.0],[142.0,90.0],[145.0,87.0],[148.0,85.0],[151.0,83.0],[154.0,81.0],[157.0,79.0],[160.0,78.0],[163.0,76.0],[166.0,74.0],[169.0,72.0],[172.0,71.0],[175.0,69.0],[178.0,68.0],[181.0,67.0],[184.0,67.0],[187.0,66.0],[190.0,65.0],[193.0,64.0],[196.0,63.0],[199.0,63.0],[202.0,62.0],[205.0,61.0],[208.0,61.0],[211.0,60.0],[214.0,60.0],[217.0,59.0],[220.0,59.0],[223.0,59.0],[226.0,59.0],[229.0,59.0],[232.0,60.0],[235.0,53.0],[238.0,53.0],[241.0,54.0],[244.0,54.0],[247.0,54.0],[247.0,68.0],[244.0,68.0],[241.0,68.0],[238.0,67.0],[235.0,67.0],[232.0,74.0],[229.0,73.0],[226.0,73.0],[223.0,73.0],[220.0,73.0],[217.0,73.0],[214.0,74.0],[211.0,74.0],[208.0,75.0],[205.0,75.0],[202.0,76.0],[199.0,77.0],[196.0,77.0],[193.0,78.0],[190.0,79.0],[187.0,80.0],[184.0,81.0],[181.0,81.0],[178.0,82.0],[175.0,83.0],[172.0,85.0],[169.0,86.0],[166.0,88.0],[163.0,90.0],[160.0,92.0],[157.0,93.0],[154.0,95.0],[151.0,97.0],[148.0,99.0],[145.0,101.0],[142.0,104.0],[139.0,106.0],[136.0,107.0],[133.0,107.0]]},"r1":{"rect":[517.8,54.0,114.0,14.0],"rx":9.5,"poly":[[517.0,55.0],[520.0,54.0],[523.0,54.0],[526.0,54.0],[529.0,54.0],[532.0,54.0],[535.0,54.0],[538.0,55.0],[541.0,55.0],[544.0,55.0],[547.0,56.0],[550.0,57.0],[553.0,57.0],[556.0,58.0],[559.0,60.0],[562.0,61.0],[565.0,63.0],[568.0,65.0],[571.0,66.0],[574.0,67.0],[577.0,68.0],[580.0,70.0],[583.0,71.0],[586.0,72.0],[589.0,73.0],[592.0,76.0],[595.0,78.0],[598.0,81.0],[601.0,85.0],[604.0,88.0],[607.0,93.0],[610.0,97.0],[613.0,101.0],[616.0,105.0],[619.0,109.0],[622.0,112.0],[625.0,117.0],[628.0,121.0],[631.0,127.0],[631.0,141.0],[628.0,135.0],[625.0,131.0],[622.0,126.0],[619.0,123.0],[616.0,119.0],[613.0,115.0],[610.0,111.0],[607.0,107.0],[604.0,102.0],[601.0,99.0],[598.0,95.0],[595.0,92.0],[592.0,90.0],[589.0,87.0],[586.0,86.0],[583.0,85.0],[580.0,84.0],[577.0,82.0],[574.0,81.0],[571.0,80.0],[568.0,79.0],[565.0,77.0],[562.0,75.0],[559.0,74.0],[556.0,72.0],[553.0,71.0],[550.0,71.0],[547.0,70.0],[544.0,69.0],[541.0,69.0],[538.0,69.0],[535.0,68.0],[532.0,68.0],[529.0,68.0],[526.0,68.0],[523.0,68.0],[520.0,68.0],[517.0,69.0]]}},"sticks":{"l3":{"c":[180.5,186.3],"r":45.6,"well":57.0},"r3":{"c":[499.7,301.2],"r":45.6,"well":57.0}},"credit":"Xbox controller photo: uKER, CC BY-SA 4.0, via Wikimedia Commons","touchpad":false,"name":"Xbox Series (photo)","accent":"#4bd264","v":2}};
+  function registerPhotos(list) { (list || []).forEach(m => { if (m && m.id) PHOTOS[m.id] = m; }); }
+  const pshape = p => p.poly ? `<path d="M${p.poly.map(q => q.join(',')).join('L')}Z"/>` : p.c ? `<circle cx="${p.c[0]}" cy="${p.c[1]}" r="${p.r}"/>`
+    : `<rect x="${p.rect[0]}" y="${p.rect[1]}" width="${p.rect[2]}" height="${p.rect[3]}" rx="${p.rx || 6}"/>`;
+  function photoSvg(id, viz, opts, meta) {
+    const W = meta.w, H = meta.h, src = meta.url || `photo/${meta.id}.png?v=${meta.v || 1}`;
+    const acc = (viz.custom && viz.custom.accent) || meta.accent || '#ff2a3d';
+    const img = `<image href="${src}" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>`;
+    let defs = '', back = '', front = '';
+    const clip = (k, shape) => { defs += `<clipPath id="${id}-c-${k}">${shape}</clipPath>`; };
+    // trigger tabs above the bumpers
+    let mw = 0, top = 0;
+    for (const [t, b] of [['l2', 'l1'], ['r2', 'r1']]) {
+      const bp = meta.parts[b]; if (!bp || !(bp.rect || bp.poly)) continue;
+      const br = bp.rect || (() => { const xs = bp.poly.map(q => q[0]), ys = bp.poly.map(q => q[1]); return [Math.min(...xs), Math.min(...ys), Math.max(...xs) - Math.min(...xs)]; })();
+      const [x, y, w] = br, tw = w * .8, th = Math.max(30, Math.min(48, W * .06)), tx = x + (w - tw) / 2, ty = y - th * .78;
+      top = Math.min(top, ty - 4);
+      mw = tw;
+      back += `<g class="k trig" data-src="${t}" id="${id}-${t}">
+        <rect x="${f1(tx)}" y="${f1(ty)}" width="${f1(tw)}" height="${f1(th)}" rx="${f1(th * .42)}" fill="#0d0d10" fill-opacity=".82" stroke="#ffffff38" stroke-width="1.5"/>
+        <rect class="nopt" id="${id}-${t}p" x="${f1(tx)}" y="${f1(ty)}" width="${f1(tw)}" height="${f1(th)}" rx="${f1(th * .42)}" fill="var(--acc)" opacity="0"/>
+        ${opts.meters ? `<rect class="nopt" x="${f1(tx + 6)}" y="${f1(ty + th * .62)}" width="${f1(tw - 12)}" height="3" rx="1.5" fill="#ffffff22"/><rect class="nopt" id="${id}-m-${t}" x="${f1(tx + 6)}" y="${f1(ty + th * .62)}" width="0" height="3" rx="1.5" fill="var(--acc)"/>` : ''}
+        <text class="lbl" x="${f1(tx + tw / 2)}" y="${f1(ty + th * .4)}" style="fill-opacity:.8;font-size:${f1(th * .3)}px">${t.toUpperCase()}</text></g>`;
+    }
+    // buttons: the photo itself, clipped to each button, glows when pressed
+    for (const [k, p] of Object.entries(meta.parts)) {
+      clip(k, pshape(p));
+      front += `<g class="k pbtn" data-src="${k}"><g clip-path="url(#${id}-c-${k})">${img}</g>
+        <g class="hl nopt" fill="var(--acc)">${pshape(p)}</g></g>`;
+    }
+    // sticks: cover the photo's stick, then draw the real cap cut out of the photo so it can move
+    let tilt = 12;
+    for (const [k, side] of [['l3', 'ls'], ['r3', 'rs']]) {
+      const s = meta.sticks[k]; if (!s) continue;
+      const [cx, cy] = s.c; tilt = s.r * .32;
+      clip(k, `<circle cx="${cx}" cy="${cy}" r="${s.r}"/>`);
+      front += `<g class="k stick" data-src="${k}"><circle class="nopt" cx="${cx}" cy="${cy}" r="${s.r}" fill="#08080a"/>
+        <circle class="nopt" cx="${cx}" cy="${cy}" r="${s.r * .92}" fill="none" stroke="#000" stroke-width="${f1(s.r * .2)}" opacity=".6"/>
+        <g class="capg" id="${id}-${side}" style="transform-origin:${cx}px ${cy}px"><circle cx="${cx}" cy="${cy + s.r * .06}" r="${s.r}" fill="#000" opacity=".55"/>
+          <g clip-path="url(#${id}-c-${k})">${img}</g>
+          <circle class="capring" cx="${cx}" cy="${cy}" r="${s.r - 1.5}" fill="none" stroke="var(--acc)" stroke-width="3"/></g></g>`;
+    }
+    const tp = meta.parts.touch && meta.parts.touch.rect ? meta.parts.touch.rect : null;
+    if (tp && meta.touchpad !== false) front += `<g clip-path="url(#${id}-c-touch)" class="nopt" id="${id}-touch"></g>`;
+    return `<svg class="pad ehp photo${opts.glow === false ? ' noglow' : ''}" id="${id}" viewBox="0 ${f1(top)} ${W} ${f1(H - top)}" style="--acc:${acc};--light:${acc}"
+      data-tp="${tp ? tp.map(f1).join(',') : ''}" data-tilt="${f1(tilt)}" data-mw="${f1(mw - 12)}">
+      <defs>${defs}<filter id="${id}-sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="10" stdDeviation="12" flood-color="#000" flood-opacity="${opts.shadow === false ? 0 : .6}"/></filter></defs>
+      ${back}<g ${opts.shadow === false ? '' : `filter="url(#${id}-sh)"`}>${img}</g>${front}</svg>`;
+  }
+
   // ---------------------------------------------------------------- build
   function svg(id, vizIn, opts) {
     opts = opts || {};
+    if (vizIn && vizIn.style === 'photo' && PHOTOS[vizIn.photo]) return photoSvg(id, vizIn, opts, PHOTOS[vizIn.photo]);
     const { viz, skin: k } = resolve(vizIn);
     const G = geometry(viz.model), xbox = viz.model === 'xbox', ds5 = viz.model === 'ds5', ds4 = viz.model === 'ds4';
     const edge = ds5 && viz.version === 'edge';
@@ -369,10 +421,14 @@
     .ehp .stick .capg{transition:transform .02s linear}
     .ehp .stick.on .capg{filter:brightness(1.35) drop-shadow(0 0 8px var(--acc))}
     .ehp .lbl{fill:#fff;fill-opacity:.38;font:600 10px Segoe UI,Arial;letter-spacing:.8px;pointer-events:none;text-anchor:middle}
-    .ehp .nopt{pointer-events:none}`;
+    .ehp .nopt{pointer-events:none}
+    .ehp.photo .k.on:not(.trig):not(.stick){transform:translateY(1.5px);filter:brightness(1.55) drop-shadow(0 0 5px var(--acc)) drop-shadow(0 0 12px var(--acc))}
+    .ehp.photo.noglow .k.on:not(.trig):not(.stick){filter:brightness(1.5)}
+    .ehp .pbtn .hl{opacity:0;transition:opacity .05s;mix-blend-mode:screen} .ehp .pbtn.on .hl{opacity:.35}
+    .ehp.photo .stick .capring{stroke-opacity:0} .ehp.photo .stick.on .capring{stroke-opacity:1}`;
   if (typeof document !== 'undefined' && !document.getElementById('ehp-css')) {
     const st = document.createElement('style'); st.id = 'ehp-css'; st.textContent = css; document.head.appendChild(st);
   }
 
-  window.EHPad = { MODELS, SKINS, DEF, resolve, svg, update, swatch };
+  window.EHPad = { MODELS, SKINS, DEF, PHOTOS, registerPhotos, resolve, svg, update, swatch };
 })();

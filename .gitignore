@@ -13,3 +13,8 @@ old-python/
 .idea/
 Thumbs.db
 desktop.ini
+
+# your own controller photo stays on your PC
+ui/photos/mine.*
+ui/phototest.html
+

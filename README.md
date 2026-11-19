@@ -26,6 +26,7 @@
 - **Light bar** colours and effects, vibration strength, low-battery warning
 - **Profiles** with automatic switching per game, and share codes to send a profile to a friend
 - **Output as Xbox or PlayStation**: games see a virtual controller of your choice (via ViGEmBus)
+- **Controller visualizer & OBS overlay**: real-photo skins (PS5 DualSense, Xbox Series, or a photo of *your own* controller, cut out and lined up for you) where every button lights up, the sticks move and the triggers fill, plus drawn models with 18 skins; one link for an OBS Browser source
 - **Tester** with a live polling-rate meter (report timing, jitter), ready for 2–8 kHz controllers
 - **Always on**: runs in the system tray, starts with Windows, single instance, auto-reconnect watchdog
 - **Hide your real controller from games** (HidHide) so games only ever see Edge Hub's controller, with no double input and no wrong-controller problems
@@ -70,6 +71,15 @@ If the project sits in a very long folder path, point the build output somewhere
 - **Engine** (`app/src/engine.rs`): parses controller reports and applies the profile, all pure functions of the current sample
 - **App** (`app/src/main.rs`): raw HID / XInput input on a high-priority thread, virtual pad via [vigem-client](https://crates.io/crates/vigem-client), keyboard/mouse via `SendInput`
 - **UI** (`ui/index.html`): one HTML file rendered in a WebView2 window ([wry](https://github.com/tauri-apps/wry) + [tao](https://github.com/tauri-apps/tao))
+
+---
+
+## Photo credits
+
+The built-in photo skins are cut-outs of photos from Wikimedia Commons, used under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/). The edited images (`ui/photos/ps5.png`, `ui/photos/xbox.png`) are shared under the same license.
+
+- DualSense: photo by Chris Woodrich, CC BY-SA 4.0
+- Xbox Series controller: photo by uKER, CC BY-SA 4.0
 
 ---
 

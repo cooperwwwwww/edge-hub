@@ -14,7 +14,7 @@
 <body>
 <div id="wrap"></div>
 <script>
-  // URL options (override the app's settings for this one source): ?model=ds5&version=edge&skin=gold&scale=.6&bg=green
+  // URL options (override the app's settings for this one source): ?photo=xbox  or  ?style=drawn&model=ds5&version=edge&skin=gold  plus &scale=.6&bg=green
   const q = new URLSearchParams(location.search);
   const NAMES = ['cross','circle','square','triangle','l1','r1','l2','r2','l3','r3','share','options','ps','touch','up','down','left','right'];
   const wrap = document.getElementById('wrap');
@@ -22,7 +22,13 @@
 
   function render() {
     const v = Object.assign({}, viz || {});
-    ['model', 'version', 'skin'].forEach(k => { if (q.get(k)) v[k] = q.get(k); });
+    ['model', 'version', 'skin', 'style', 'photo'].forEach(k => { if (q.get(k)) v[k] = q.get(k); });
+    if (q.get('photo') && !q.get('style')) v.style = 'photo';
+    if ((q.get('model') || q.get('skin')) && !q.get('photo') && !q.get('style')) v.style = 'drawn';
+    if (v.style !== 'drawn') {
+      v.style = 'photo';
+      if (!EHPad.PHOTOS[v.photo]) v.photo = EHPad.PHOTOS.mine ? 'mine' : (Object.values(EHPad.PHOTOS).find(p => p.user) || {id: 'ps5'}).id;
+    }
     const o = Object.assign({}, EHPad.DEF.overlay, v.overlay || {});
     if (q.get('scale')) o.scale = +q.get('scale');
     if (q.get('bg')) o.bg = q.get('bg');
@@ -35,7 +41,8 @@
     try {
       const j = await (await fetch('/config', { cache: 'no-store' })).json();
       const k = JSON.stringify(j.viz || {});
-      if (k !== vkey) { vkey = k; viz = j.viz || {}; render(); }
+      const pk = JSON.stringify(j.photos || []);
+      if (k + pk !== vkey) { vkey = k + pk; viz = j.viz || {}; EHPad.registerPhotos(j.photos || []); render(); }
     } catch (e) { /* app closed: keep last picture */ }
   }
   function connect() {
