@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Edge Hub</title>
+<script src="pad.js"></script>
 <style>
 :root{
   --bg:#0b0b0f; --panel:#14141b; --panel2:#1b1b24; --line:#262632; --text:#ecebf2; --muted:#8b8a99;
@@ -109,6 +110,24 @@ details.adv[open] summary:before{transform:rotate(90deg)}
 .releasedbar.on{display:flex}
 .curvebar .btn{padding:6px 12px}
 .devlist{display:grid;gap:8px}
+.btn{white-space:nowrap}
+.vizprev{border-radius:12px;padding:10px 6px;display:flex;justify-content:center}
+.vizprev svg{width:100%;max-width:760px}
+.vizprev.check{background:repeating-conic-gradient(#24242c 0% 25%, #1b1b22 0% 50%) 50% / 26px 26px}
+.vizprev.dark{background:#0b0b0f} .vizprev.light{background:#e9ebef}
+.modelgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.mcard,.skin{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:8px;cursor:pointer;text-align:center;color:var(--text)}
+.mcard:hover,.skin:hover{border-color:#555}
+.mcard svg,.skin svg{width:100%;display:block;pointer-events:none}
+.mcard.on,.skin.on{border-color:var(--accent);box-shadow:0 0 16px -6px var(--accent);background:#ff2a3d10}
+.mcard b,.skin b{display:block;font-size:12px;margin-top:4px}
+.skingrid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;max-height:660px;overflow:auto;padding-right:4px}
+.skin .badge{margin-top:4px}
+.ccust{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.cf{display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
+.cf input[type=color]{width:34px;height:26px} .cf input[type=color]:disabled{opacity:.25}
+.cf input[type=checkbox]{accent-color:var(--accent)}
+ol.steps2{margin:10px 0;padding-left:20px;line-height:1.7;color:var(--muted)} ol.steps2 b{color:var(--text)}
 .statuslist{display:grid;gap:6px}
 .st{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;background:var(--panel2);font-size:13px}
 .st i{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-style:normal;font-size:12px;font-weight:700;flex:none}
@@ -442,6 +461,33 @@ textarea{font-family:Consolas,monospace;resize:vertical;min-height:56px;user-sel
   </div>
 </section>
 
+<!-- VISUALIZER -->
+<section class="page" id="p-viz">
+  <div class="grid" style="grid-template-columns:1.45fr 1fr">
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Live preview <span class="sub"><span class="seg" id="vbgprev"><button data-pb="check" class="on">Checker</button><button data-pb="dark">Dark</button><button data-pb="light">Light</button></span></span></h3>
+        <div id="vizprev" class="vizprev check"></div></div>
+      <div class="card"><h3>Controller model</h3><div class="modelgrid" id="vmodels"></div>
+        <div class="row" style="margin-top:12px"><span class="muted small" style="flex:0 0 60px">Version</span><div class="chips" id="vversions" style="margin:0"></div></div></div>
+      <div class="card big"><h3>Stream overlay for OBS <span class="sub">live · transparent · updates when you change skins</span></h3>
+        <div class="row" style="margin-top:0"><input type="text" id="ovurl" readonly class="mono"><button class="btn pri" id="ovcopy">Copy link</button><button class="btn" id="ovopen">Open</button></div>
+        <ol class="steps2"><li>In OBS: <b>Sources → + → Browser</b>, name it, click OK.</li><li>Paste the link into <b>URL</b> and set <b>Width 800</b>, <b>Height 520</b>.</li><li>Click OK, then drag and resize it on your scene. Edge Hub just has to be running (the tray is fine).</li></ol>
+        <div class="row"><label>Size</label><input type="range" min="0.4" max="1" step="0.05" data-ov="scale"><span class="val" data-ovv="scale"></span></div>
+        <div class="row"><label>Trigger meters</label><label class="tog"><input type="checkbox" data-ov="meters"><span></span></label></div>
+        <div class="row"><label>Press glow</label><label class="tog"><input type="checkbox" data-ov="glow"><span></span></label></div>
+        <div class="row"><label>Drop shadow</label><label class="tog"><input type="checkbox" data-ov="shadow"><span></span></label></div>
+        <div class="row"><label>Background</label><div class="seg" id="ovbg"><button data-bg="transparent">Transparent</button><button data-bg="green">Green screen</button><button data-bg="dark">Dark</button></div></div>
+        <div class="muted small">Two overlays with different looks? Add <span class="mono">?skin=gold</span> or <span class="mono">?model=xbox&amp;version=one</span> to the end of the link for that source.</div>
+      </div>
+    </div>
+    <div class="grid" style="align-content:start">
+      <div class="card"><h3>Skins <span class="sub" id="vskincount"></span></h3><div class="skingrid" id="vskins"></div></div>
+      <div class="card"><h3>Customize <span class="sub">change any part of the current skin</span></h3><div id="vcustom"></div>
+        <div class="row"><button class="btn" id="vreset">Reset to skin</button></div></div>
+    </div>
+  </div>
+</section>
+
 <!-- TESTER -->
 <section class="page" id="p-tester">
   <div class="grid g2">
@@ -555,6 +601,7 @@ const PAGES = [
   ['motion','Motion','M12 2l3 6 6 1-4.5 4.5L18 20l-6-3-6 3 1.5-6.5L3 9l6-1z'],
   ['light','Vibration & Light','M12 2a7 7 0 0 1 4 12.7V18H8v-3.3A7 7 0 0 1 12 2zM9 20h6v2H9z'],
   ['macros','Macros','M4 4h16v4H4zm0 6h10v4H4zm0 6h16v4H4z'],
+  ['viz','Visualizer & OBS','M3 5h18v11H3zM8 19h8v2H8zM6 8l3 3-3 3M11 14h4'],
   ['tester','Tester','M9 2h6v2h-1v5l5 9a2 2 0 0 1-1.8 3H6.8A2 2 0 0 1 5 18l5-9V4H9z'],
   ['settings','Settings','M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm9 4l-2.1.9-.3 1.2 1.2 2-1.9 1.9-2-1.2-1.2.3L13.8 21h-2.6l-.9-2.1-1.2-.3-2 1.2-1.9-1.9 1.2-2-.3-1.2L3 13.3v-2.6l2.1-.9.3-1.2-1.2-2 1.9-1.9 2 1.2 1.2-.3L10.2 3h2.6l.9 2.1 1.2.3 2-1.2 1.9 1.9-1.2 2 .3 1.2 2.1.9z'],
 ];
@@ -583,6 +630,7 @@ function mockApi(){
       {name:'Wireless Controller',id:'USB\\VID_054C&PID_09CC&MI_00\\1',service:'usbaudio',provider:'Microsoft',filters:[],standard:true}]}),
     restore: async()=>({log:[['ok','Remapping turned off and the virtual controller removed'],['ok','Controller released']],status:{all_standard:true,devices:[]}}),
     release: async()=>{}, resume: async()=>{}, quit: async()=>{},
+    open_url: async()=>{},
     hidhide_status: async()=>({installed:false,on:false,device:null}), hidhide_set: async()=>({installing:true}), read_log: async()=>'[1] Edge Hub 2.1 starting\n[2] connected: PS4 Wireless Controller (USB/XInput)',
     list_devices: async()=>[{id:'p1',name:'Wireless Controller',kind:'PS4',conn:'USB',active:true},{id:'xinput:0',name:'Xbox controller (player 1)',kind:'Xbox',conn:'XInput',active:false}],
     import_profile: async(x)=>({profiles:['Default'],current:'Default',profile:x}), recent_apps: async()=>['cod.exe','fortnite.exe','chrome.exe'],
@@ -592,101 +640,8 @@ function mockApi(){
 /* ---------------- controller svg ---------------- */
 /* Realistic black & red controller, drawn in SVG so every part can animate. */
 const PAD_HOSTS = [['#pad-home','ph'],['#pad-btn','pb'],['#pad-stick','pst']];
-function padSVG(id){
-  const u = n => `url(#${id}-${n})`;
-  const body = 'M215 112 C262 98 300 96 330 98 L470 98 C500 96 538 98 585 112 C650 118 690 150 712 210 C735 280 760 370 762 420 C764 470 735 500 700 494 C670 490 650 470 630 440 L588 392 C570 378 545 372 520 372 L280 372 C255 372 230 378 212 392 L170 440 C150 470 130 490 100 494 C65 500 36 470 38 420 C40 370 65 280 88 210 C110 150 150 118 215 112 Z';
-  const face = (src, x, y, sym, col) => `<g class="k" data-src="${src}">
-      <circle cx="${x}" cy="${y+3}" r="24" fill="#000" opacity=".55"/>
-      <circle cx="${x}" cy="${y}" r="23" fill="${u('btn')}" stroke="#000" stroke-opacity=".6" stroke-width="1.5"/>
-      <ellipse cx="${x-5}" cy="${y-9}" rx="11" ry="6" fill="#fff" opacity=".07"/>
-      <g fill="none" stroke="${col}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" opacity=".95">${sym(x, y)}</g></g>`;
-  const arm = (src, d, tri) => `<g class="k" data-src="${src}"><path d="${d}" fill="${u('btn')}" stroke="#000" stroke-opacity=".7" stroke-width="1.5"/><path d="${tri}" fill="#6a6a74"/></g>`;
-  const stick = (src, cx, cy, side) => `<g class="k stick" data-src="${src}">
-      <circle cx="${cx}" cy="${cy}" r="54" fill="${u('well')}" stroke="#2c2c33" stroke-width="2"/>
-      <circle cx="${cx}" cy="${cy}" r="44" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="4"/>
-      <g class="capg" id="${id}-${side}" style="transform-origin:${cx}px ${cy}px">
-        <circle cx="${cx}" cy="${cy+5}" r="39" fill="#000" opacity=".6"/>
-        <circle cx="${cx}" cy="${cy}" r="39" fill="${u('cap')}"/>
-        <circle cx="${cx}" cy="${cy}" r="36.5" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="3.5" stroke-dasharray="1.6 2.6"/>
-        <circle cx="${cx}" cy="${cy}" r="29" fill="${u('capin')}"/>
-        <circle class="capring" cx="${cx}" cy="${cy}" r="29" fill="none" stroke="#fff" stroke-opacity=".06" stroke-width="2"/>
-        <ellipse cx="${cx-8}" cy="${cy-14}" rx="16" ry="7" fill="#fff" opacity=".06"/>
-      </g></g>`;
-  return `<svg class="pad" id="${id}" viewBox="0 20 800 500">
-  <defs>
-    <linearGradient id="${id}-body" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2e2e35"/><stop offset=".4" stop-color="#18181c"/><stop offset="1" stop-color="#09090b"/></linearGradient>
-    <radialGradient id="${id}-sheen" cx=".5" cy=".12" r=".75"><stop offset="0" stop-color="#fff" stop-opacity=".13"/><stop offset=".6" stop-color="#fff" stop-opacity=".02"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></radialGradient>
-    <linearGradient id="${id}-red" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff4256"/><stop offset=".55" stop-color="#d0122a"/><stop offset="1" stop-color="#7a0612"/></linearGradient>
-    <linearGradient id="${id}-redside" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#b30d20"/><stop offset="1" stop-color="#ff3348"/></linearGradient>
-    <radialGradient id="${id}-well" cx=".5" cy=".42" r=".6"><stop offset="0" stop-color="#040405"/><stop offset=".82" stop-color="#0c0c0f"/><stop offset="1" stop-color="#2a2a31"/></radialGradient>
-    <radialGradient id="${id}-btn" cx=".38" cy=".28" r=".85"><stop offset="0" stop-color="#3e3e47"/><stop offset=".55" stop-color="#1c1c21"/><stop offset="1" stop-color="#0b0b0e"/></radialGradient>
-    <radialGradient id="${id}-cap" cx=".4" cy=".3" r=".8"><stop offset="0" stop-color="#4c4c55"/><stop offset=".5" stop-color="#202026"/><stop offset="1" stop-color="#0a0a0d"/></radialGradient>
-    <radialGradient id="${id}-capin" cx=".5" cy=".68" r=".65"><stop offset="0" stop-color="#34343c"/><stop offset="1" stop-color="#101014"/></radialGradient>
-    <linearGradient id="${id}-tp" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#26262c"/><stop offset="1" stop-color="#121216"/></linearGradient>
-    <linearGradient id="${id}-bump" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3a3a42"/><stop offset="1" stop-color="#141418"/></linearGradient>
-    <pattern id="${id}-grain" width="5" height="5" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r=".6" fill="#fff" opacity=".035"/><circle cx="3.5" cy="3.2" r=".5" fill="#000" opacity=".2"/></pattern>
-    <filter id="${id}-sh" x="-15%" y="-15%" width="130%" height="140%"><feDropShadow dx="0" dy="14" stdDeviation="14" flood-color="#000" flood-opacity=".75"/></filter>
-    <filter id="${id}-glow" x="-50%" y="-200%" width="200%" height="500%"><feGaussianBlur stdDeviation="6"/></filter>
-    <clipPath id="${id}-tpclip"><path d="M304 102 L496 102 L492 192 Q490 208 474 208 L326 208 Q310 208 308 192 Z"/></clipPath>
-  </defs>
-
-  <!-- triggers (behind body) -->
-  <g class="k trig" data-src="l2" id="${id}-l2"><path d="M172 124 C170 80 205 52 252 50 C284 49 300 70 300 100 L298 122 Z" fill="${u('red')}" stroke="#4a020a" stroke-width="1.5"/>
-    <path d="M190 104 C196 78 222 64 252 63" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
-    <path class="nopt" id="${id}-l2p" d="M172 124 C170 80 205 52 252 50 C284 49 300 70 300 100 L298 122 Z" fill="#fff" opacity="0"/>
-    <text class="lbl" x="245" y="92">L2</text></g>
-  <g class="k trig" data-src="r2" id="${id}-r2"><path d="M628 124 C630 80 595 52 548 50 C516 49 500 70 500 100 L502 122 Z" fill="${u('red')}" stroke="#4a020a" stroke-width="1.5"/>
-    <path d="M610 104 C604 78 578 64 548 63" fill="none" stroke="#fff" stroke-opacity=".25" stroke-width="3" stroke-linecap="round"/>
-    <path class="nopt" id="${id}-r2p" d="M628 124 C630 80 595 52 548 50 C516 49 500 70 500 100 L502 122 Z" fill="#fff" opacity="0"/>
-    <text class="lbl" x="555" y="92">R2</text></g>
-  <!-- bumpers -->
-  <g transform="translate(0,-17)"><g class="k" data-src="l1"><path d="M150 150 C168 118 222 100 300 101 L301 122 C240 120 192 130 166 160 Z" fill="${u('bump')}" stroke="#000" stroke-width="1.5"/><path d="M160 146 C182 122 226 110 296 108" fill="none" stroke="${u('redside')}" stroke-width="2.5" stroke-linecap="round"/><text class="lbl" x="232" y="124" font-size="9">L1</text></g></g>
-  <g transform="translate(0,-17)"><g class="k" data-src="r1"><path d="M650 150 C632 118 578 100 500 101 L499 122 C560 120 608 130 634 160 Z" fill="${u('bump')}" stroke="#000" stroke-width="1.5"/><path d="M640 146 C618 122 574 110 504 108" fill="none" stroke="${u('redside')}" stroke-width="2.5" stroke-linecap="round"/><text class="lbl" x="568" y="124" font-size="9">R1</text></g></g>
-
-  <!-- shell -->
-  <path d="${body}" fill="${u('body')}" filter="${u('sh')}"/>
-  <path class="nopt" d="${body}" fill="${u('grain')}"/>
-  <path class="nopt" d="${body}" fill="${u('sheen')}"/>
-  <path class="nopt" d="${body}" fill="none" stroke="#3a3a42" stroke-width="1.5" opacity=".7"/>
-  <path class="nopt" d="M88 230 C70 300 52 380 50 420 C49 455 66 482 96 484" fill="none" stroke="#d0122a" stroke-width="3" stroke-linecap="round" opacity=".85"/>
-  <path class="nopt" d="M712 230 C730 300 748 380 750 420 C751 455 734 482 704 484" fill="none" stroke="#d0122a" stroke-width="3" stroke-linecap="round" opacity=".85"/>
-
-  <!-- light bar + touchpad -->
-  <path id="${id}-lbg" class="nopt" d="M316 96 L484 96" stroke="#ff2a3d" stroke-width="12" stroke-linecap="round" filter="${u('glow')}" opacity=".9"/>
-  <path id="${id}-lb" class="nopt" d="M316 96 L484 96" stroke="#ff2a3d" stroke-width="5" stroke-linecap="round"/>
-  <g class="k" data-src="touch">
-    <path d="M304 102 L496 102 L492 192 Q490 208 474 208 L326 208 Q310 208 308 192 Z" fill="${u('tp')}" stroke="#000" stroke-width="2"/>
-    <path d="M310 106 L490 106" stroke="#fff" stroke-opacity=".06" stroke-width="2"/>
-    <g clip-path="${u('tpclip')}" id="${id}-touch"></g></g>
-
-  <!-- d-pad -->
-  <circle class="nopt" cx="190" cy="210" r="66" fill="${u('well')}" opacity=".85"/>
-  ${arm('up','M174 154 h32 v36 l-16 16 l-16 -16 z','M190 164 l7 10 h-14 z')}
-  ${arm('down','M174 266 h32 v-36 l-16 -16 l-16 16 z','M190 256 l7 -10 h-14 z')}
-  ${arm('left','M134 194 v32 h36 l16 -16 l-16 -16 z','M144 210 l10 -7 v14 z')}
-  ${arm('right','M246 194 v32 h-36 l-16 -16 l16 -16 z','M236 210 l-10 -7 v14 z')}
-
-  <!-- face buttons -->
-  <circle class="nopt" cx="610" cy="210" r="74" fill="${u('well')}" opacity=".85"/>
-  ${face('triangle', 610, 164, (x, y) => `<path d="M${x} ${y-10} l10 17 h-20 z"/>`, '#3fd3a8')}
-  ${face('circle', 656, 210, (x, y) => `<circle cx="${x}" cy="${y}" r="9.5"/>`, '#ff5a6e')}
-  ${face('cross', 610, 256, (x, y) => `<path d="M${x-8} ${y-8} l16 16 M${x+8} ${y-8} l-16 16"/>`, '#7aa8ff')}
-  ${face('square', 564, 210, (x, y) => `<rect x="${x-8.5}" y="${y-8.5}" width="17" height="17" rx="1"/>`, '#ee8ccf')}
-
-  <!-- share / options -->
-  <g class="k" data-src="share"><rect x="268" y="124" width="13" height="30" rx="6.5" fill="${u('btn')}" stroke="#000" stroke-width="1.5" transform="rotate(-18 274 139)"/></g>
-  <g class="k" data-src="options"><rect x="519" y="124" width="13" height="30" rx="6.5" fill="${u('btn')}" stroke="#000" stroke-width="1.5" transform="rotate(18 526 139)"/></g>
-  <text class="lbl" x="262" y="172" font-size="8">SHARE</text><text class="lbl" x="540" y="172" font-size="8">OPTIONS</text>
-
-  <!-- speaker + PS -->
-  <g class="nopt" fill="#000" opacity=".8">${[...Array(15)].map((_, i) => `<circle cx="${384 + (i%5)*8}" cy="${238 + Math.floor(i/5)*7}" r="1.8"/>`).join('')}</g>
-  <g class="k" data-src="ps"><circle cx="400" cy="300" r="18" fill="${u('btn')}" stroke="#000" stroke-width="1.5"/><circle cx="400" cy="300" r="18" fill="none" stroke="#d0122a" stroke-opacity=".6" stroke-width="1.2"/><text x="400" y="304.5" text-anchor="middle" font-size="11" font-weight="700" fill="#9a9aa5" class="nopt">PS</text></g>
-
-  <!-- sticks -->
-  ${stick('l3', 300, 300, 'ls')}
-  ${stick('r3', 500, 300, 'rs')}
-  </svg>`;
-}
+const vizCfg = () => ((typeof INIT !== 'undefined' && INIT && INIT.settings) || {}).viz || {};
+function padSVG(id){ return EHPad.svg(id, vizCfg(), {meters: false}); }
 function mountPads(){
   for (const [host, id] of PAD_HOSTS) {
     const h = $(host); if (!h) continue;
@@ -700,30 +655,82 @@ function mountPads(){
   }
 }
 function updatePads(){
-  const b = S.btn || {};
-  const page = ($('.page.on') || {}).id;
+  const col = P ? P.color : '#ff2a3d';
   for (const [, id] of PAD_HOSTS) {
     const svg = document.getElementById(id); if (!svg || !svg.closest('.page.on')) continue;
-    $$('.k', svg).forEach(el => {
-      const src = el.dataset.src;
-      el.classList.toggle('on', !!b[src]);
-      el.classList.toggle('sel', (id === 'pb' && src === selSrc) || (id === 'pst' && src === (side === 'left' ? 'l3' : 'r3')));
-    });
-    if (S.connected) {
-      const tilt = (el, x, y, pressed) => { const dx = (x-127.5)/127.5*15, dy = (y-127.5)/127.5*15;
-        el.style.transform = `translate(${dx}px,${dy}px) scale(${pressed ? .93 : 1})`; };
-      tilt($(`#${id}-ls`), S.lx, S.ly, b.l3); tilt($(`#${id}-rs`), S.rx, S.ry, b.r3);
-      for (const t of ['l2', 'r2']) { const v = (t === 'l2' ? S.l2v : S.r2v) / 255;
-        $(`#${id}-${t}`).style.transform = `translateY(${v*12}px) scaleY(${1 - v*.12})`;
-        $(`#${id}-${t}p`).setAttribute('opacity', v * .45); }
-      $(`#${id}-touch`).innerHTML = (S.touches||[]).map(t => { const x = 304 + t[0]/1920*192, y = 102 + t[1]/942*106;
-        return `<circle cx="${x}" cy="${y}" r="14" fill="${P ? P.color : '#ff2a3d'}" opacity=".35"/><circle class="touchpt" cx="${x}" cy="${y}" r="5"/>`; }).join('');
-    }
-    const col = P ? P.color : '#ff2a3d';
-    $(`#${id}-lb`).setAttribute('stroke', col); $(`#${id}-lbg`).setAttribute('stroke', col);
+    EHPad.update(id, S, col);
+    $$('.k', svg).forEach(el => { const src = el.dataset.src;
+      el.classList.toggle('sel', (id === 'pb' && src === selSrc) || (id === 'pst' && src === (side === 'left' ? 'l3' : 'r3'))); });
   }
+  if (($('.page.on') || {}).id === 'p-viz') EHPad.update('vp', S, col);
 }
 
+/* ---------------- visualizer & OBS overlay ---------------- */
+function getViz(){
+  const v = JSON.parse(JSON.stringify(vizCfg()));
+  v.model = EHPad.MODELS[v.model] ? v.model : 'ds4';
+  v.version = EHPad.MODELS[v.model].versions[v.version] ? v.version : EHPad.MODELS[v.model].def;
+  v.skin = v.skin || 'hexred'; v.custom = v.custom || {};
+  v.overlay = Object.assign({}, EHPad.DEF.overlay, v.overlay || {});
+  return v;
+}
+let vizSaveT = null;
+function setViz(v, full = true){
+  INIT.settings = INIT.settings || {}; INIT.settings.viz = v;
+  clearTimeout(vizSaveT); vizSaveT = setTimeout(() => api.set_setting('viz', v), 150);
+  renderVizPreview(); mountPads(); if (full) renderViz();
+}
+function renderVizPreview(){
+  const v = getViz();
+  $('#vizprev').innerHTML = EHPad.svg('vp', v, {meters: v.overlay.meters, glow: v.overlay.glow, shadow: v.overlay.shadow});
+  if (S) EHPad.update('vp', S, P ? P.color : null);
+}
+const CFIELDS = [['body','Body'],['center','Center plate',1],['grip','Grips'],['btn','Buttons'],['dpad','D-pad'],['touch','Touchpad'],
+  ['stick','Stick caps'],['ring','Stick rings',1],['trig','Triggers & bumpers'],['accent','Press glow']];
+const CSELECTS = [['finish','Button finish',[['chrome','Chrome'],['gloss','Gloss'],['matte','Matte']]],
+  ['trigFinish','Trigger finish',[['chrome','Chrome'],['gloss','Gloss'],['matte','Matte']]],
+  ['touchFinish','Touchpad finish',[['brushed','Brushed metal'],['chrome','Chrome'],['gloss','Gloss'],['matte','Matte']]],
+  ['symbols','Button symbols',[['classic','Colored'],['white','White'],['dark','Dark'],['match','Match button'],['none','None']]],
+  ['texture','Body texture',[['none','Smooth'],['grain','Grain'],['carbon','Carbon fiber'],['camo','Camo']]]];
+function renderCustom(v){
+  const k = EHPad.resolve(v).skin;
+  $('#vcustom').innerHTML = `<div class="ccust">${CFIELDS.map(([key, name, opt]) => `<label class="cf"><input type="color" data-cc="${key}" value="${k[key] || '#000000'}" ${opt && !k[key] ? 'disabled' : ''}>${name}
+      ${opt ? `<input type="checkbox" data-cn="${key}" ${k[key] ? 'checked' : ''} title="Show / hide">` : ''}</label>`).join('')}</div>
+    <div class="ccust" style="margin-top:10px">${CSELECTS.map(([key, name, opts]) => `<label class="cf" style="flex-direction:column;align-items:flex-start;gap:3px"><span class="muted small">${name}</span>
+      <select data-cs="${key}" style="width:100%">${opts.map(([val, l]) => `<option value="${val}" ${k[key] === val ? 'selected' : ''}>${l}</option>`).join('')}</select></label>`).join('')}
+      <label class="cf" style="align-self:end"><input type="checkbox" data-cg ${k.gripTex ? 'checked' : ''}> Textured grips</label></div>`;
+  const upd = (key, val) => { const n = getViz(); n.custom[key] = val; setViz(n, false); };
+  $$('[data-cc]').forEach(el => el.oninput = () => upd(el.dataset.cc, el.value));
+  $$('[data-cn]').forEach(el => el.onchange = () => { const inp = $(`[data-cc="${el.dataset.cn}"]`); inp.disabled = !el.checked; upd(el.dataset.cn, el.checked ? inp.value : null); });
+  $$('[data-cs]').forEach(el => el.onchange = () => upd(el.dataset.cs, el.value));
+  $('[data-cg]').onchange = e => upd('gripTex', e.target.checked);
+}
+function renderViz(){
+  if (!$('#vizprev')) return;
+  const v = getViz();
+  renderVizPreview();
+  $('#vmodels').innerHTML = Object.entries(EHPad.MODELS).map(([key, m]) => `<button data-model="${key}" class="mcard ${v.model === key ? 'on' : ''}">
+    ${EHPad.svg('mm-' + key, {model: key, skin: v.skin, custom: v.custom}, {shadow: false, glow: false})}<b>${m.name}</b></button>`).join('');
+  $$('#vmodels [data-model]').forEach(b => b.onclick = () => { const n = getViz(); n.model = b.dataset.model; n.version = EHPad.MODELS[n.model].def; setViz(n); });
+  $('#vversions').innerHTML = Object.entries(EHPad.MODELS[v.model].versions).map(([key, name]) => `<button data-ver="${key}" class="${v.version === key ? 'on' : ''}">${name}</button>`).join('');
+  $$('#vversions [data-ver]').forEach(b => b.onclick = () => { const n = getViz(); n.version = b.dataset.ver; setViz(n); });
+  const sk = $('#vskins'), key = v.model + '|' + v.version;
+  if (sk._k !== key) {
+    sk._k = key;
+    sk.innerHTML = EHPad.SKINS.map(x => `<button class="skin" data-skin="${x.id}">${EHPad.svg('sk-' + x.id, {model: v.model, version: v.version, skin: x.id}, {shadow: false, glow: false})}
+      <b>${x.name}</b>${x.tag ? `<span class="badge ok">${x.tag}</span>` : ''}</button>`).join('');
+    $$('#vskins [data-skin]').forEach(b => b.onclick = () => { const n = getViz(); n.skin = b.dataset.skin; n.custom = {}; setViz(n); toast('Skin: ' + b.querySelector('b').textContent); });
+  }
+  $$('#vskins [data-skin]').forEach(b => b.classList.toggle('on', b.dataset.skin === v.skin && !Object.keys(v.custom).length));
+  $('#vskincount').textContent = EHPad.SKINS.length + ' skins';
+  renderCustom(v);
+  $('#ovurl').value = INIT.overlay_url || 'http://127.0.0.1:8650/overlay';
+  const o = v.overlay;
+  $$('[data-ov]').forEach(el => { const k2 = el.dataset.ov; if (el.type === 'checkbox') el.checked = !!o[k2]; else el.value = o[k2];
+    const out = $(`[data-ovv="${k2}"]`); if (out) out.textContent = Math.round(o[k2] * 100) + '%';
+    el.oninput = el.onchange = () => { const n = getViz(); n.overlay[k2] = el.type === 'checkbox' ? el.checked : +el.value; if (out) out.textContent = Math.round(n.overlay[k2] * 100) + '%'; setViz(n, false); }; });
+  $$('#ovbg [data-bg]').forEach(b => { b.classList.toggle('on', o.bg === b.dataset.bg); b.onclick = () => { const n = getViz(); n.overlay.bg = b.dataset.bg; setViz(n); }; });
+}
 /* ---------------- navigation ---------------- */
 function buildNav(){
   $('#nav').innerHTML = PAGES.map(([id, nm, d]) => `<button data-p="${id}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="${d}"/></svg>${nm}</button>`).join('');
@@ -1583,6 +1590,11 @@ async function boot(){
   $('#ctt').onchange = e => setApp('close_to_tray', e.target.checked);
   $('#hhbtn').onclick = hidhideClick; renderHidHide();
   $('#showlog').onclick = async () => { const b = $('#logbox'); b.style.display = b.style.display === 'none' ? '' : 'none'; if (b.style.display === '') b.textContent = (await api.read_log()) || 'No events logged yet.'; };
+  renderViz();
+  $$('#vbgprev [data-pb]').forEach(b => b.onclick = () => { $$('#vbgprev button').forEach(x => x.classList.toggle('on', x === b)); $('#vizprev').className = 'vizprev ' + b.dataset.pb; });
+  $('#ovcopy').onclick = async () => { try { await navigator.clipboard.writeText($('#ovurl').value); toast('Overlay link copied. Paste it into an OBS Browser source'); } catch(e) { $('#ovurl').select(); } };
+  $('#ovopen').onclick = () => api.open_url($('#ovurl').value);
+  $('#vreset').onclick = () => { const n = getViz(); n.custom = {}; setViz(n); toast('Back to the original skin'); };
   $('#profrumble').checked = (INIT.settings||{}).profile_rumble !== false; $('#profrumble').onchange = e => api.set_setting('profile_rumble', e.target.checked);
   $('#lowbat').checked = (INIT.settings||{}).low_battery_warn !== false; $('#lowbat').onchange = e => api.set_setting('low_battery_warn', e.target.checked);
   $('#autosw').checked = (INIT.settings||{}).auto_switch !== false; $('#autosw').onchange = e => api.set_setting('auto_switch', e.target.checked);

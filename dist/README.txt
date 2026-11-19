@@ -29,6 +29,10 @@ WHAT IT DOES
   - Profiles that switch automatically per game
   - Games see an Xbox or a PlayStation controller (your choice)
 
+STREAM OVERLAY (OBS)
+  Visualizer & OBS page -> pick a model + skin -> Copy link.
+  In OBS: Sources -> + -> Browser, paste the link, Width 800, Height 520.
+
 TIPS
   - If a game reacts twice to each press, it's seeing your real controller AND
     Edge Hub's virtual one: turn on Steam Input for that game, or use HidHide.

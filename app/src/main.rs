@@ -1023,6 +1023,81 @@ fn restore(sh: &Arc<Shared>, o: &Value) -> Value {
     json!({"log": log.iter().map(|(a, b)| json!([a, b])).collect::<Vec<_>>(), "status": after})
 }
 
+// ------------------------------------------------------------------ OBS overlay server (localhost only)
+
+const PAD_JS: &str = include_str!("../../ui/pad.js");
+const OVERLAY_HTML: &str = include_str!("../../ui/overlay.html");
+
+fn overlay_port(sh: &Shared) -> u16 {
+    lock(&sh.settings).get("overlay_port").and_then(|v| v.as_u64()).filter(|p| *p >= 1024 && *p < 65535).unwrap_or(8650) as u16
+}
+fn overlay_url(sh: &Shared) -> String { format!("http://127.0.0.1:{}/overlay", overlay_port(sh)) }
+
+/// Compact live state for the overlay (about 60 updates a second).
+fn overlay_state(sh: &Shared) -> String {
+    let col = { let c = lock(&sh.engine).cfg.color; format!("#{:02x}{:02x}{:02x}", c.0, c.1, c.2) };
+    match lock(&sh.snap).clone() {
+        Some((s, _)) => {
+            let bits: u32 = s.btn.iter().enumerate().map(|(i, b)| (*b as u32) << i).sum();
+            json!({"c": true, "b": bits, "lx": s.lx, "ly": s.ly, "rx": s.rx, "ry": s.ry, "l2": s.l2v, "r2": s.r2v,
+                   "t": s.touches.iter().map(|t| [t.0, t.1]).collect::<Vec<_>>(), "col": col}).to_string()
+        }
+        None => json!({"c": false, "b": 0, "lx": 128, "ly": 128, "rx": 128, "ry": 128, "l2": 0, "r2": 0, "t": [], "col": col}).to_string(),
+    }
+}
+
+fn overlay_client(sh: Arc<Shared>, mut st: std::net::TcpStream) {
+    use std::io::{Read, Write};
+    let _ = st.set_read_timeout(Some(Duration::from_secs(3)));
+    let mut buf = [0u8; 4096];
+    let mut n = 0;
+    while n < buf.len() {
+        match st.read(&mut buf[n..]) { Ok(0) | Err(_) => break, Ok(k) => n += k }
+        if buf[..n].windows(4).any(|w| w == b"\r\n\r\n") { break; }
+    }
+    let req = String::from_utf8_lossy(&buf[..n]);
+    let path = req.split_whitespace().nth(1).unwrap_or("/").split('?').next().unwrap_or("/").to_string();
+    let send = |st: &mut std::net::TcpStream, ctype: &str, body: &[u8]| {
+        let head = format!("HTTP/1.1 200 OK\r\nContent-Type: {ctype}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: close\r\n\r\n", body.len());
+        let _ = st.write_all(head.as_bytes());
+        let _ = st.write_all(body);
+    };
+    match path.as_str() {
+        "/" | "/overlay" | "/overlay.html" => send(&mut st, "text/html; charset=utf-8", OVERLAY_HTML.as_bytes()),
+        "/pad.js" => send(&mut st, "application/javascript; charset=utf-8", PAD_JS.as_bytes()),
+        "/config" => {
+            let viz = lock(&sh.settings).get("viz").cloned().unwrap_or(json!({}));
+            send(&mut st, "application/json", json!({"viz": viz}).to_string().as_bytes());
+        }
+        "/events" => {
+            let head = "HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nCache-Control: no-store\r\nAccess-Control-Allow-Origin: *\r\nConnection: keep-alive\r\n\r\n";
+            if st.write_all(head.as_bytes()).is_err() { return; }
+            let _ = st.set_nodelay(true);
+            while sh.running.load(SeqCst) {
+                if st.write_all(format!("data: {}\n\n", overlay_state(&sh)).as_bytes()).is_err() { break; }
+                thread::sleep(Duration::from_millis(16));
+            }
+        }
+        _ => {
+            let _ = st.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+        }
+    }
+}
+
+fn overlay_server(sh: Arc<Shared>) {
+    let port = overlay_port(&sh);
+    match std::net::TcpListener::bind(("127.0.0.1", port)) {
+        Ok(l) => {
+            elog(&format!("OBS overlay ready at http://127.0.0.1:{port}/overlay"));
+            for c in l.incoming().flatten() {
+                let s = sh.clone();
+                thread::spawn(move || overlay_client(s, c));
+            }
+        }
+        Err(e) => elog(&format!("OBS overlay could not start on port {port}: {e}")),
+    }
+}
+
 // ------------------------------------------------------------------ HidHide (hide the real controller from games)
 
 const HH_CLI: &str = r"C:\Program Files\Nefarius Software Solutions\HidHide\x64\HidHideCLI.exe";
@@ -1165,6 +1240,7 @@ fn get_init(sh: &Shared) -> Value {
         "profiles": names(sh), "current": cur, "profile": profile(sh, &cur), "sources": SOURCES, "targets": TARGETS,
         "settings": lock(&sh.settings).clone(), "driver": driver_status(), "data_dir": data_dir().display().to_string(),
         "native": true, "version": VERSION, "recent_apps": lock(&sh.recent_apps).clone(), "devices": devices_json(sh),
+        "overlay_url": overlay_url(sh),
     })
 }
 
@@ -1240,6 +1316,11 @@ fn api_call(sh: &Arc<Shared>, m: &str, a: &[Value], proxy: &tao::event_loop::Eve
         "open_data_dir" => { let _ = fs::create_dir_all(data_dir()); let _ = Command::new("explorer").arg(data_dir()).spawn(); Value::Null }
         "recent_apps" => json!(lock(&sh.recent_apps).clone()),
         "list_devices" => devices_json(sh),
+        "open_url" => {
+            let u = s0();
+            if u.starts_with("http://127.0.0.1:") { let _ = Command::new("cmd").args(["/c", "start", "", &u]).creation_flags(NO_WINDOW).spawn(); }
+            Value::Null
+        }
         "hidhide_status" => hidhide_status(sh),
         "hidhide_set" => hidhide_set(sh, arg(0).as_bool().unwrap_or(false)),
         "read_log" => json!(fs::read_to_string(data_dir().join("edgehub.log")).unwrap_or_default()
@@ -1295,6 +1376,7 @@ fn main() {
     { let s = sh.clone(); thread::Builder::new().name("input".into()).spawn(move || input_thread(s)).unwrap(); }
     { let s = sh.clone(); thread::spawn(move || writer_thread(s)); }
     { let s = sh.clone(); thread::spawn(move || watcher_thread(s)); }
+    if !test_mode { let s = sh.clone(); thread::spawn(move || overlay_server(s)); }
     if std::env::args().any(|a| a == "--coldtest") {
         // same order as a normal launch: threads already running, then autostart remapping
         if sh.setting_bool("autostart_mapping", false) { set_mapping(&sh, true); }
@@ -1402,7 +1484,10 @@ fn main() {
     let ipc_sh = sh.clone();
     let ipc_proxy = proxy.clone();
     let webview = WebViewBuilder::new_with_web_context(&mut ctx)
-        .with_custom_protocol("edgehub".into(), move |_id, _req| {
+        .with_custom_protocol("edgehub".into(), move |_id, req| {
+            if req.uri().path().ends_with("/pad.js") {
+                return Response::builder().header("Content-Type", "application/javascript; charset=utf-8").body(Cow::Borrowed(PAD_JS.as_bytes())).unwrap();
+            }
             Response::builder().header("Content-Type", "text/html; charset=utf-8").body(Cow::Borrowed(html.as_bytes())).unwrap()
         })
         .with_url("http://edgehub.localhost/")

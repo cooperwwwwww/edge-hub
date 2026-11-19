@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edge Hub overlay</title>
+<style>
+  html, body { margin: 0; background: transparent; overflow: hidden; }
+  #wrap { width: 100vw; height: 100vh; display: grid; place-items: center; transition: opacity .3s; }
+  #wrap svg { width: calc(100vw * var(--s, 1)); max-height: calc(100vh * var(--s, 1)); }
+  #wrap.off { opacity: .35; filter: grayscale(.7); }
+</style>
+<script src="pad.js"></script>
+</head>
+<body>
+<div id="wrap"></div>
+<script>
+  // URL options (override the app's settings for this one source): ?model=ds5&version=edge&skin=gold&scale=.6&bg=green
+  const q = new URLSearchParams(location.search);
+  const NAMES = ['cross','circle','square','triangle','l1','r1','l2','r2','l3','r3','share','options','ps','touch','up','down','left','right'];
+  const wrap = document.getElementById('wrap');
+  let viz = null, vkey = '', last = null;
+
+  function render() {
+    const v = Object.assign({}, viz || {});
+    ['model', 'version', 'skin'].forEach(k => { if (q.get(k)) v[k] = q.get(k); });
+    const o = Object.assign({}, EHPad.DEF.overlay, v.overlay || {});
+    if (q.get('scale')) o.scale = +q.get('scale');
+    if (q.get('bg')) o.bg = q.get('bg');
+    document.body.style.background = o.bg === 'green' ? '#00ff00' : o.bg === 'dark' ? '#0b0b0f' : 'transparent';
+    wrap.innerHTML = EHPad.svg('ov', v, { meters: o.meters, glow: o.glow, shadow: o.shadow });
+    wrap.style.setProperty('--s', o.scale || 1);
+    if (last) EHPad.update('ov', last, last.col);
+  }
+  async function pollConfig() {
+    try {
+      const j = await (await fetch('/config', { cache: 'no-store' })).json();
+      const k = JSON.stringify(j.viz || {});
+      if (k !== vkey) { vkey = k; viz = j.viz || {}; render(); }
+    } catch (e) { /* app closed: keep last picture */ }
+  }
+  function connect() {
+    const es = new EventSource('/events');
+    es.onmessage = e => {
+      const d = JSON.parse(e.data);
+      const S = { connected: d.c, btn: {}, lx: d.lx, ly: d.ly, rx: d.rx, ry: d.ry, l2v: d.l2, r2v: d.r2, touches: d.t || [], col: d.col };
+      NAMES.forEach((n, i) => { S.btn[n] = !!((d.b >> i) & 1); });
+      last = S;
+      EHPad.update('ov', S, d.col);
+      wrap.classList.toggle('off', !d.c);
+    };
+    es.onerror = () => { es.close(); wrap.classList.add('off'); setTimeout(connect, 1000); };
+  }
+  render();
+  pollConfig().then(connect);
+  setInterval(pollConfig, 1000);
+</script>
+</body>
+</html>
